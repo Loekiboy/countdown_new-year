@@ -1,0 +1,124 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 50%, #0a0a1a 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden;
+}
+
+.container {
+    text-align: center;
+    z-index: 10;
+    position: relative;
+}
+
+.title {
+    color: #fff;
+    font-size: 3rem;
+    margin-bottom: 30px;
+    text-shadow: 0 0 20px #ff6b35, 0 0 40px #ff6b35, 0 0 60px #ff6b35;
+    animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+    from {
+        text-shadow: 0 0 20px #ff6b35, 0 0 40px #ff6b35, 0 0 60px #ff6b35;
+    }
+    to {
+        text-shadow: 0 0 30px #ffd700, 0 0 50px #ffd700, 0 0 70px #ffd700;
+    }
+}
+
+#countdownCanvas {
+    display: block;
+    margin: 0 auto;
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 50px rgba(255, 107, 53, 0.3);
+}
+
+.labels {
+    display: flex;
+    justify-content: space-around;
+    max-width: 1000px;
+    margin: 20px auto 0;
+    padding: 0 50px;
+}
+
+.labels span {
+    color: #fff;
+    font-size: 1.2rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    opacity: 0.8;
+    width: 200px;
+    text-align: center;
+}
+
+#fireworksCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.happy-new-year {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.9);
+    padding: 50px 80px;
+    border-radius: 30px;
+    border: 3px solid #ffd700;
+}
+
+.happy-new-year h1 {
+    color: #ffd700;
+    font-size: 4rem;
+    animation: celebrate 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes celebrate {
+    from {
+        transform: scale(1) rotate(-2deg);
+    }
+    to {
+        transform: scale(1.1) rotate(2deg);
+    }
+}
+
+@media (max-width: 1100px) {
+    .title {
+        font-size: 2rem;
+    }
+    
+    .labels span {
+        font-size: 0.9rem;
+        width: 150px;
+    }
+}
+
+@media (max-width: 800px) {
+    .title {
+        font-size: 1.5rem;
+    }
+    
+    .labels span {
+        font-size: 0.7rem;
+        width: 80px;
+    }
+}
