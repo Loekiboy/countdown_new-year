@@ -12,7 +12,7 @@ const fireworksCtx = fireworksCanvas.getContext('2d');
 function resizeCanvas() {
     const maxWidth = Math.min(window.innerWidth - 40, 1000);
     canvas.width = maxWidth;
-    canvas.height = maxWidth * 0.35;
+    canvas.height = maxWidth * 0.25; // lager zodat cijfers beter passen
     fireworksCanvas.width = window.innerWidth;
     fireworksCanvas.height = window.innerHeight;
 }
@@ -152,8 +152,8 @@ const COLOR_SCHEMES = [
 // ==========================================
 class Pixel {
     constructor(x, y, targetX, targetY, color, size) {
-        this.x = targetX; // Start at target position
-        this.y = targetY; // Start at target position
+        this.x = targetX; 
+        this.y = targetY; 
         this.targetX = targetX;
         this.targetY = targetY;
         this.color = color;
@@ -162,21 +162,24 @@ class Pixel {
         this.vy = 0;
         this.rotation = 0;
         this.rotationSpeed = 0;
-        this.scale = 0; // Start invisible/small
+        this.scale = 0; 
         this.alpha = 1;
-        this.state = 'arriving'; // arriving, stable, exploding
+        this.state = 'arriving'; // arriving, stable, launching, exploding
         this.arrivalProgress = 0;
+        this.trail = []; // Trail for launching/exploding
+        this.sparkleTimer = 0;
+        this.canvasOffset = { x: 0, y: 0 }; // For converting to fireworks canvas coords
     }
 
-    update() {
+    update(dt = 1) {
         if (this.state === 'arriving') {
-            this.arrivalProgress += 0.1; // Faster arrival
+            // Simple scale-up arrival like before
+            this.arrivalProgress += 0.1 * dt; 
             if (this.arrivalProgress >= 1) {
                 this.arrivalProgress = 1;
                 this.state = 'stable';
                 this.scale = 1;
             } else {
-                // Simple scale up effect for arrival
                 this.scale = this.arrivalProgress;
             }
         } else if (this.state === 'stable') {
@@ -184,60 +187,153 @@ class Pixel {
             this.y = this.targetY;
             this.scale = 1;
             this.rotation = 0;
+            // Subtle pulse
+            this.sparkleTimer += 0.1 * dt;
+        } else if (this.state === 'launching') {
+            // Move the whole digit block up together
+            this.x += this.vx * dt;
+            this.y += this.vy * dt;
+            this.vy += 0.2 * dt; // Langzamer voor minder hoogte
+            this.rotation += this.rotationSpeed * dt;
+            
+            // Stretch effect while launching
+            this.scale = 1 + Math.abs(this.vy) * 0.08;
+
+            // Explode when it slows down (reaches peak)
+            if (this.vy > -2) { 
+                this.explode();
+            }
         } else if (this.state === 'exploding') {
-            this.x += this.vx;
-            this.y += this.vy;
-            this.vy += 0.5; // Heavier gravity
-            this.vx *= 0.95;
-            this.rotation += this.rotationSpeed;
-            this.alpha -= 0.02;
-            this.scale *= 0.95;
+            // Add trail
+            this.trail.push({ x: this.x, y: this.y, alpha: this.alpha, size: this.size * this.scale });
+            if (this.trail.length > 12) this.trail.shift();
+            
+            this.x += this.vx * dt;
+            this.y += this.vy * dt;
+            this.vy += 0.22 * dt; // Gravity iets zachter
+            this.vx *= Math.pow(0.985, dt); // Minder afremmen
+            this.rotation += this.rotationSpeed * dt;
+            this.alpha -= 0.01 * dt; // Langzamer vervagen voor langer zichtbaar effect
+            this.scale *= Math.pow(0.985, dt);
         }
+        
+        // Update trail fade
+        this.trail.forEach(t => t.alpha *= Math.pow(0.85, dt));
+    }
+
+    launch() {
+        this.state = 'launching';
+        this.trail = [];
+        // vx and vy are already set by explodePixelsAtPositions
+        // Just start the launching state
     }
 
     explode() {
         this.state = 'exploding';
+        this.trail = [];
         const angle = Math.random() * Math.PI * 2;
-        const speed = 2 + Math.random() * 8; // Random explosion speed
+        const speed = 4 + Math.random() * 7; // Nog zachter
         this.vx = Math.cos(angle) * speed;
-        this.vy = Math.sin(angle) * speed - 2;
-        this.rotationSpeed = (Math.random() - 0.5) * 0.2;
+        this.vy = Math.sin(angle) * speed - 3;
+        this.rotationSpeed = (Math.random() - 0.5) * 0.6;
+        this.scale = 1.3; // Iets groter bij start
     }
 
-    easeOutBack(x) {
-        const c1 = 1.70158;
-        const c3 = c1 + 1;
-        return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
+    easeOutElastic(x) {
+        const c4 = (2 * Math.PI) / 3;
+        return x === 0
+          ? 0
+          : x === 1
+          ? 1
+          : Math.pow(2, -10 * x) * Math.sin((x * 10 - 0.75) * c4) + 1;
     }
 
+    // Draw on main canvas (for stable/arriving pixels)
     draw(ctx) {
         if (this.alpha <= 0) return;
+        if (this.state === 'launching' || this.state === 'exploding') return; // These are drawn on fireworks canvas
 
         ctx.save();
         ctx.translate(this.x, this.y);
         
-        // Only rotate if exploding
-        if (this.state === 'exploding') {
+        if (this.state !== 'stable') {
             ctx.rotate(this.rotation);
         }
         
         ctx.scale(this.scale, this.scale);
         ctx.globalAlpha = this.alpha;
 
-        // Sharp pixels, no shadow for the grid itself to keep it clean
-        if (this.state === 'exploding') {
-             ctx.shadowBlur = 10;
-             ctx.shadowColor = this.color;
+        // Glow for arriving pixels
+        if (this.state === 'arriving') {
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = this.color;
         } else {
-             ctx.shadowBlur = 0;
+            // Subtle pulse glow when stable
+            const pulse = Math.sin(this.sparkleTimer) * 0.3 + 0.7;
+            ctx.shadowBlur = 5 * pulse;
+            ctx.shadowColor = this.color;
         }
 
         ctx.fillStyle = this.color;
-
-        // Always draw a square for the pixel look
         const s = this.size;
-        // Draw from center
         ctx.fillRect(-s/2, -s/2, s, s);
+
+        ctx.restore();
+    }
+
+    // Draw on fireworks canvas (for launching/exploding pixels)
+    drawOnFireworks(ctx, offsetX, offsetY) {
+        if (this.alpha <= 0) return;
+        if (this.state !== 'launching' && this.state !== 'exploding') return;
+
+        const screenX = this.x + offsetX;
+        const screenY = this.y + offsetY;
+
+        // Draw trail first
+        this.trail.forEach((t, i) => {
+            const trailX = t.x + offsetX;
+            const trailY = t.y + offsetY;
+            const trailAlpha = t.alpha * (i / this.trail.length) * 0.6;
+            const trailSize = t.size * (i / this.trail.length);
+            
+            ctx.save();
+            ctx.globalAlpha = trailAlpha;
+            ctx.fillStyle = this.color;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = this.color;
+            // Use squares for trail
+            ctx.fillRect(trailX - trailSize/2, trailY - trailSize/2, trailSize, trailSize);
+            ctx.restore();
+        });
+
+        ctx.save();
+        ctx.translate(screenX, screenY);
+        ctx.rotate(this.rotation);
+        
+        // Stretch vertically if launching
+        if (this.state === 'launching') {
+            ctx.scale(this.scale * 0.6, this.scale * 1.8);
+        } else {
+            ctx.scale(this.scale, this.scale);
+        }
+        
+        ctx.globalAlpha = this.alpha;
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = this.color;
+        ctx.fillStyle = this.color;
+
+        const s = this.size;
+        ctx.fillRect(-s/2, -s/2, s, s);
+
+        // Add sparkle/glow ring when exploding
+        if (this.state === 'exploding' && this.alpha > 0.5) {
+            ctx.beginPath();
+            ctx.arc(0, 0, s, 0, Math.PI * 2);
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = this.alpha * 0.5;
+            ctx.stroke();
+        }
 
         ctx.restore();
     }
@@ -256,7 +352,7 @@ class FireworkParticle {
         this.y = y;
         this.color = color;
         const angle = Math.random() * Math.PI * 2;
-        const speed = 2 + Math.random() * 6;
+        const speed = 2 + Math.random() * 6; // Iets minder snel voor minder lag
         this.vx = Math.cos(angle) * speed;
         this.vy = Math.sin(angle) * speed;
         this.alpha = 1;
@@ -264,15 +360,15 @@ class FireworkParticle {
         this.trail = [];
     }
 
-    update() {
+    update(dt = 1) {
         this.trail.push({ x: this.x, y: this.y, alpha: this.alpha });
-        if (this.trail.length > 10) this.trail.shift();
+        if (this.trail.length > 8) this.trail.shift();
 
-        this.x += this.vx;
-        this.y += this.vy;
-        this.vy += 0.05;
-        this.vx *= 0.99;
-        this.alpha -= 0.015;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.vy += 0.05 * dt;
+        this.vx *= Math.pow(0.985, dt);
+        this.alpha -= 0.02 * dt; // sneller opruimen bij lage fps
     }
 
     draw(ctx) {
@@ -280,20 +376,22 @@ class FireworkParticle {
         for (let i = 0; i < this.trail.length; i++) {
             const t = this.trail[i];
             ctx.beginPath();
-            ctx.arc(t.x, t.y, this.size * (i / this.trail.length), 0, Math.PI * 2);
             ctx.fillStyle = this.color;
             ctx.globalAlpha = t.alpha * (i / this.trail.length) * 0.5;
-            ctx.fill();
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = this.color;
+            // Use squares for trail too
+            const trailSize = this.size * (i / this.trail.length);
+            ctx.fillRect(t.x - trailSize/2, t.y - trailSize/2, trailSize, trailSize);
         }
 
-        // Draw particle
+        // Draw particle as square
         ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
         ctx.globalAlpha = this.alpha;
         ctx.shadowBlur = 15;
         ctx.shadowColor = this.color;
-        ctx.fill();
+        ctx.fillRect(this.x - this.size/2, this.y - this.size/2, this.size, this.size);
         ctx.globalAlpha = 1;
         ctx.shadowBlur = 0;
     }
@@ -442,7 +540,7 @@ class CountdownDisplay {
         return changed;
     }
 
-    update() {
+    update(dt = 1) {
         this.calculateSizes();
 
         const time = this.getTimeUntilNewYear();
@@ -516,17 +614,17 @@ class CountdownDisplay {
         }
 
         // Update alle pixels
-        this.pixels.forEach(pixel => pixel.update());
+        this.pixels.forEach(pixel => pixel.update(dt));
 
         // Update exploding pixels
         this.explodingPixels = this.explodingPixels.filter(pixel => {
-            pixel.update();
+            pixel.update(dt);
             return pixel.isAlive();
         });
 
         // Update fireworks
         this.fireworks = this.fireworks.filter(particle => {
-            particle.update();
+            particle.update(dt);
             return particle.isAlive();
         });
     }
@@ -535,12 +633,46 @@ class CountdownDisplay {
         // Vind pixels die bij de gewijzigde posities horen
         // We filter them OUT of this.pixels and move them to this.explodingPixels
         
+        const canvasRect = canvas.getBoundingClientRect();
+        const g = 0.2; // same gravity as launch update (slower)
+
+        // Bereken per cijfer de minimale y om een uniforme launch te geven
+        const charMinY = {};
+        this.pixels.forEach(p => {
+            if (!positions.includes(p.charIndex)) return;
+            const screenY = p.y + canvasRect.top + window.scrollY;
+            if (charMinY[p.charIndex] === undefined || screenY < charMinY[p.charIndex]) {
+                charMinY[p.charIndex] = screenY;
+            }
+        });
+        
         const remainingPixels = [];
         
         this.pixels.forEach(pixel => {
             if (positions.includes(pixel.charIndex)) {
-                pixel.explode();
+                // Bepaal maximale veilige start-snelheid op basis van vrije ruimte boven het pixel
+                const minY = charMinY[pixel.charIndex] ?? (pixel.y + canvasRect.top + window.scrollY);
+                const availableUp = Math.max(30, minY - 10); // ruimte tot top van scherm
+                let maxVy = -Math.sqrt(2 * g * availableUp);
+                maxVy *= 0.7; // nog lager
+
+                // Zelfde snelheid/rotatie voor alle pixels van dit cijfer
+                const vy = maxVy;
+                const vx = 0; // geen drift
+                const rot = 0; // geen rotatie
+
+                pixel.vy = vy;
+                pixel.vx = vx;
+                pixel.rotationSpeed = rot;
+                pixel.launch();
                 this.explodingPixels.push(pixel);
+                // Minimal burst (of none) to reduce particle load when digits leave
+                const burstCount = Math.random() < 0.5 ? 0 : 2 + Math.floor(Math.random() * 2); // 0-3 particles
+                const fxX = pixel.x + canvasRect.left;
+                const fxY = pixel.y + canvasRect.top;
+                for (let b = 0; b < burstCount; b++) {
+                    this.fireworks.push(new FireworkParticle(fxX, fxY, pixel.color));
+                }
             } else {
                 remainingPixels.push(pixel);
             }
@@ -550,30 +682,29 @@ class CountdownDisplay {
     }
 
     addFireworks() {
-        // Voeg random vuurwerk toe
-        // Minder vuurwerk in de achtergrond
-        const numFireworks = 1 + Math.floor(Math.random() * 2);
+        // Kleiner burst per seconde voor minder lag
+        const numFireworks = 1 + Math.floor(Math.random() * 1); // 1 of 2
         for (let i = 0; i < numFireworks; i++) {
             const x = Math.random() * fireworksCanvas.width;
             const y = Math.random() * fireworksCanvas.height * 0.6;
             const color = this.getRandomColor();
 
-            for (let j = 0; j < 30; j++) {
+            for (let j = 0; j < 18; j++) {
                 this.fireworks.push(new FireworkParticle(x, y, color));
             }
         }
     }
 
     createMassiveFireworks() {
-        // Mega vuurwerk voor nieuwjaar!
-        for (let i = 0; i < 20; i++) {
+        // Groots maar performance-vriendelijker vuurwerk voor nieuwjaar
+        for (let i = 0; i < 12; i++) {
             setTimeout(() => {
                 const x = Math.random() * fireworksCanvas.width;
                 const y = Math.random() * fireworksCanvas.height * 0.5;
                 const schemeIndex = Math.floor(Math.random() * COLOR_SCHEMES.length);
                 const scheme = COLOR_SCHEMES[schemeIndex];
 
-                for (let j = 0; j < 100; j++) {
+                for (let j = 0; j < 70; j++) {
                     const color = scheme[Math.floor(Math.random() * scheme.length)];
                     this.fireworks.push(new FireworkParticle(x, y, color));
                 }
@@ -582,15 +713,20 @@ class CountdownDisplay {
     }
 
     draw() {
-        // Clear canvas
+        // Clear canvases
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         fireworksCtx.clearRect(0, 0, fireworksCanvas.width, fireworksCanvas.height);
 
-        // Draw exploding pixels
-        this.explodingPixels.forEach(pixel => pixel.draw(ctx));
+        // Get canvas position for coordinate conversion
+        const canvasRect = canvas.getBoundingClientRect();
+        const offsetX = canvasRect.left + window.scrollX;
+        const offsetY = canvasRect.top + window.scrollY;
 
-        // Draw stable pixels
+        // Draw stable/arriving pixels on main canvas
         this.pixels.forEach(pixel => pixel.draw(ctx));
+
+        // Draw exploding/launching pixels on fireworks canvas (so they can go outside the box!)
+        this.explodingPixels.forEach(pixel => pixel.drawOnFireworks(fireworksCtx, offsetX, offsetY));
 
         // Draw fireworks
         this.fireworks.forEach(particle => particle.draw(fireworksCtx));
@@ -601,15 +737,20 @@ class CountdownDisplay {
 // ANIMATIE LOOP
 // ==========================================
 const countdown = new CountdownDisplay();
+let lastTime = null;
 
-function animate() {
-    countdown.update();
+function animate(timestamp) {
+    if (lastTime === null) lastTime = timestamp;
+    const dt = Math.max(0.5, Math.min(3, (timestamp - lastTime) / 16.67)); // clamp to avoid spikes
+    lastTime = timestamp;
+
+    countdown.update(dt);
     countdown.draw();
     requestAnimationFrame(animate);
 }
 
 // Start de animatie
-animate();
+requestAnimationFrame(animate);
 
 // ==========================================
 // EXTRA INTERACTIEVE FEATURES
