@@ -3,21 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎆 Countdown to 2026! 🎆</title>
+    <title>Countdown to 2026!</title>
+    <link rel="icon" type="image/svg+xml" href="images/fav.svg">
+    <link rel="icon" type="image/png" href="images/fav.png">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div class="moon"></div>
+    <div class="shooting-stars">
+        <div class="shooting-star" style="--top: 12%; --delay: 45s;"></div>
+        <div class="shooting-star" style="--top: 38%; --delay: 120s;"></div>
+        <div class="shooting-star" style="--top: 65%; --delay: 200s;"></div>
+    </div>
     <div class="container">
         <h1 class="title">🎆 Countdown to 2026 🎆</h1>
         <canvas id="countdownCanvas"></canvas>
-        <div class="labels">
-            <span>Days</span>
-            <span>Hours</span>
-            <span>Minutes</span>
-            <span>Seconds</span>
+        <div class="labels" id="labels">
+            <span id="label-days">Days</span>
+            <span id="label-hours">Hours</span>
+            <span id="label-minutes">Minutes</span>
+            <span id="label-seconds">Seconds</span>
         </div>
         <div class="happy-new-year" id="happyNewYear">
-            <h1>🎉 HAPPY NEW YEAR 2026! 🎉</h1>
+            <h1>🎉 HAPPY NEW YEAR 🎉<span class="year">2026</span></h1>
         </div>
     </div>
     <canvas id="fireworksCanvas"></canvas>

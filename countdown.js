@@ -10,9 +10,9 @@ const fireworksCtx = fireworksCanvas.getContext('2d');
 
 // Responsive canvas sizing
 function resizeCanvas() {
-    const maxWidth = Math.min(window.innerWidth - 40, 1000);
+    const maxWidth = Math.min(window.innerWidth - 40, 1400);
     canvas.width = maxWidth;
-    canvas.height = maxWidth * 0.25; // lager zodat cijfers beter passen
+    canvas.height = maxWidth * 0.35;
     fireworksCanvas.width = window.innerWidth;
     fireworksCanvas.height = window.innerHeight;
 }
@@ -128,24 +128,23 @@ const DIGIT_PATTERNS = {
 // KLEURENSCHEMA'S
 // ==========================================
 const COLOR_SCHEMES = [
-    // Vuur kleuren
     ['#ff6b35', '#ff8c42', '#ffd166', '#ffee93'],
-    // Neon kleuren
     ['#00ffff', '#00ff88', '#88ff00', '#ffff00'],
-    // Paars/roze
     ['#ff006e', '#fb5607', '#ffbe0b', '#ff006e'],
-    // Blauw/groen
     ['#0077b6', '#00b4d8', '#90e0ef', '#caf0f8'],
-    // Goud/rood
     ['#ffd700', '#ff6b6b', '#ff8e53', '#fee440'],
-    // Rainbow
     ['#ff0000', '#ff7700', '#ffff00', '#00ff00', '#0000ff', '#8b00ff']
 ];
 
-// ==========================================
-// PIXEL SHAPES
-// ==========================================
-// Removed shapes to enforce pixel grid look
+// Langzaam veranderende kleuren voor dagen, uren en colons
+let slowColorHue = 0;
+const SLOW_COLOR_SPEED = 0.001; // 20x langzamer
+
+function getSlowChangingColorWithVariance() {
+    slowColorHue = (slowColorHue + SLOW_COLOR_SPEED) % 360;
+    const jitter = (Math.random() * 12) - 6; // per pixel kleine variatie
+    return `hsl(${(slowColorHue + jitter + 360) % 360}, 80%, 65%)`;
+}
 
 // ==========================================
 // PIXEL CLASS
@@ -344,6 +343,125 @@ class Pixel {
 }
 
 // ==========================================
+// FIREWORK ROCKET CLASS (vuurpijl die omhoog gaat en explodeert)
+// ==========================================
+class FireworkRocket {
+    constructor(x, targetY, color) {
+        this.x = x;
+        this.y = fireworksCanvas.height + 20;
+        this.targetY = targetY;
+        this.color = color;
+        this.speed = 4 + Math.random() * 3;
+        this.trail = [];
+        this.exploded = false;
+        this.particles = [];
+    }
+
+    update(dt = 1) {
+        if (!this.exploded) {
+            // Voeg trail toe
+            this.trail.push({ x: this.x, y: this.y, alpha: 1 });
+            if (this.trail.length > 15) this.trail.shift();
+            
+            // Beweeg omhoog
+            this.y -= this.speed * dt;
+            
+            // Explodeer als we target bereiken
+            if (this.y <= this.targetY) {
+                this.explode();
+            }
+        }
+        
+        // Update trail fade
+        this.trail.forEach(t => t.alpha *= Math.pow(0.9, dt));
+        this.trail = this.trail.filter(t => t.alpha > 0.05);
+        
+        // Update particles
+        this.particles = this.particles.filter(p => {
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            p.vy += 0.08 * dt;
+            p.alpha -= 0.015 * dt;
+            p.trail.push({ x: p.x, y: p.y, alpha: p.alpha });
+            if (p.trail.length > 8) p.trail.shift();
+            return p.alpha > 0;
+        });
+    }
+
+    explode() {
+        this.exploded = true;
+        const numParticles = 40 + Math.floor(Math.random() * 30);
+        const scheme = COLOR_SCHEMES[Math.floor(Math.random() * COLOR_SCHEMES.length)];
+        
+        for (let i = 0; i < numParticles; i++) {
+            const angle = (Math.PI * 2 / numParticles) * i + Math.random() * 0.3;
+            const speed = 3 + Math.random() * 4;
+            this.particles.push({
+                x: this.x,
+                y: this.y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                color: scheme[Math.floor(Math.random() * scheme.length)],
+                alpha: 1,
+                size: 2 + Math.random() * 2,
+                trail: []
+            });
+        }
+    }
+
+    draw(ctx) {
+        // Draw trail
+        this.trail.forEach((t, i) => {
+            ctx.save();
+            ctx.globalAlpha = t.alpha * 0.7;
+            ctx.fillStyle = this.color;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = this.color;
+            const size = 3 * (i / this.trail.length);
+            ctx.fillRect(t.x - size/2, t.y - size/2, size, size * 3);
+            ctx.restore();
+        });
+
+        // Draw rocket head als niet geexplodeerd
+        if (!this.exploded) {
+            ctx.save();
+            ctx.fillStyle = '#fff';
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // Draw explosion particles
+        this.particles.forEach(p => {
+            // Trail
+            p.trail.forEach((t, i) => {
+                ctx.save();
+                ctx.globalAlpha = t.alpha * (i / p.trail.length) * 0.5;
+                ctx.fillStyle = p.color;
+                ctx.fillRect(t.x - p.size/2, t.y - p.size/2, p.size, p.size);
+                ctx.restore();
+            });
+            
+            // Particle
+            ctx.save();
+            ctx.globalAlpha = p.alpha;
+            ctx.fillStyle = p.color;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = p.color;
+            ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+            ctx.restore();
+        });
+    }
+
+    isAlive() {
+        return !this.exploded || this.particles.length > 0;
+    }
+}
+
+// ==========================================
 // FIREWORK PARTICLE CLASS
 // ==========================================
 class FireworkParticle {
@@ -352,7 +470,7 @@ class FireworkParticle {
         this.y = y;
         this.color = color;
         const angle = Math.random() * Math.PI * 2;
-        const speed = 2 + Math.random() * 6; // Iets minder snel voor minder lag
+        const speed = 2 + Math.random() * 6;
         this.vx = Math.cos(angle) * speed;
         this.vy = Math.sin(angle) * speed;
         this.alpha = 1;
@@ -368,11 +486,10 @@ class FireworkParticle {
         this.y += this.vy * dt;
         this.vy += 0.05 * dt;
         this.vx *= Math.pow(0.985, dt);
-        this.alpha -= 0.02 * dt; // sneller opruimen bij lage fps
+        this.alpha -= 0.02 * dt;
     }
 
     draw(ctx) {
-        // Draw trail
         for (let i = 0; i < this.trail.length; i++) {
             const t = this.trail[i];
             ctx.beginPath();
@@ -380,12 +497,10 @@ class FireworkParticle {
             ctx.globalAlpha = t.alpha * (i / this.trail.length) * 0.5;
             ctx.shadowBlur = 10;
             ctx.shadowColor = this.color;
-            // Use squares for trail too
             const trailSize = this.size * (i / this.trail.length);
             ctx.fillRect(t.x - trailSize/2, t.y - trailSize/2, trailSize, trailSize);
         }
 
-        // Draw particle as square
         ctx.beginPath();
         ctx.fillStyle = this.color;
         ctx.globalAlpha = this.alpha;
@@ -409,38 +524,52 @@ class CountdownDisplay {
         this.pixels = [];
         this.explodingPixels = [];
         this.fireworks = [];
+        this.rockets = [];
         this.currentTimeString = '';
         this.colorSchemeIndex = 0;
         this.lastSecond = -1;
+        this.displayMode = 'full'; // 'full', 'no-days', 'no-hours', 'only-seconds'
+        this.lastDisplayMode = 'full';
 
-        // Bereken pixel grootte gebaseerd op canvas
         this.calculateSizes();
+        this.topOffset = 60;
+        this.bottomMargin = 50;
     }
 
     calculateSizes() {
-        // Elke tijd sectie: DD:HH:MM:SS = 8 cijfers + 3 dubbele punten
-        // Elke cijfer is 5 breed, dubbele punt is 3 breed
-        // Totale breedte: 8*5 + 3*3 + spacing = 40 + 9 + spacing
-        const totalUnits = 11; // 8 digits + 3 colons
-        const spacing = 1; // Tighter spacing for grid look
-        const digitWidth = 5;
-        const availableWidth = canvas.width - 40; // Less padding
+        const rows = 7;
+        const spacing = 1;
+        
+        this.topOffset = Math.max(10, canvas.height * 0.08);
+        this.bottomMargin = Math.max(10, canvas.height * 0.10);
+        // duw cijfers iets omlaag (1/3 van de oorspronkelijke ruimte tussen titel en labels)
+        this.topOffset += canvas.height * 0.05;
+        
+        const heightAvailable = canvas.height - this.topOffset - this.bottomMargin;
+        const maxPixelByHeight = Math.floor((heightAvailable - (rows - 1) * spacing) / rows);
+        
+        // Bereken breedte afhankelijk van displayMode
+        let numChars = 11; // DD:HH:MM:SS
+        if (this.displayMode === 'no-days') numChars = 8; // HH:MM:SS
+        else if (this.displayMode === 'no-hours') numChars = 5; // MM:SS
+        else if (this.displayMode === 'only-seconds') numChars = 2; // SS
+        
+        const availableWidth = canvas.width - 40;
+        
+        // Grotere pixels als er minder cijfers zijn
+        let scaleFactor = 1;
+        if (this.displayMode === 'no-days') scaleFactor = 1.3;
+        else if (this.displayMode === 'no-hours') scaleFactor = 1.8;
+        else if (this.displayMode === 'only-seconds') scaleFactor = 2.5;
+        
+        const basePixelSize = Math.floor((availableWidth - 55) / 81);
+        const maxPixelByWidth = Math.max(6, basePixelSize * scaleFactor);
+        
+        this.pixelSize = Math.floor(Math.min(maxPixelByWidth, maxPixelByHeight * scaleFactor));
+        this.pixelSize = Math.min(this.pixelSize, 35);
+        this.pixelSize = Math.max(this.pixelSize, 6);
 
-        // Calculate size to fit width
-        this.pixelSize = Math.floor(availableWidth / (totalUnits * digitWidth + totalUnits * spacing * 5)); // Approximate
-        
-        // Recalculate based on exact grid math
-        // Total width = (8 digits * 5 cols) + (3 colons * 1 col) + spacings
-        // Actually colons are 1 wide in my pattern? No, they are 5 wide in the pattern definition but only center has pixels.
-        // Let's assume standard 5 width for all chars for simplicity in grid calculation
-        
-        const totalCols = (8 * 5) + (3 * 5) + (10 * 2); // Digits + Colons + Spacing between chars
-        this.pixelSize = Math.floor(availableWidth / totalCols);
-        
-        this.pixelSize = Math.min(this.pixelSize, 14);
-        this.pixelSize = Math.max(this.pixelSize, 4);
-
-        this.spacing = 1; // 1px gap between pixels
+        this.spacing = spacing;
         this.digitSpacing = this.pixelSize * 2;
         this.sectionSpacing = this.pixelSize * 4;
     }
@@ -449,7 +578,6 @@ class CountdownDisplay {
         const now = new Date();
         const newYear = new Date(now.getFullYear() + 1, 0, 1, 0, 0, 0);
         
-        // Check if we're already past new year
         if (now >= newYear) {
             return { days: 0, hours: 0, minutes: 0, seconds: 0, isNewYear: true };
         }
@@ -465,11 +593,56 @@ class CountdownDisplay {
     }
 
     formatTime(time) {
-        const d = String(time.days).padStart(2, '0');
+        // Bepaal displayMode
+        if (time.days === 0 && time.hours === 0 && time.minutes === 0) {
+            this.displayMode = 'only-seconds';
+        } else if (time.days === 0 && time.hours === 0) {
+            this.displayMode = 'no-hours';
+        } else if (time.days === 0) {
+            this.displayMode = 'no-days';
+        } else {
+            this.displayMode = 'full';
+        }
+        
         const h = String(time.hours).padStart(2, '0');
         const m = String(time.minutes).padStart(2, '0');
         const s = String(time.seconds).padStart(2, '0');
+        
+        if (this.displayMode === 'only-seconds') return s;
+        if (this.displayMode === 'no-hours') return `${m}:${s}`;
+        if (this.displayMode === 'no-days') return `${h}:${m}:${s}`;
+        
+        const d = String(time.days).padStart(2, '0');
         return `${d}:${h}:${m}:${s}`;
+    }
+
+    updateLabels() {
+        const labelDays = document.getElementById('label-days');
+        const labelHours = document.getElementById('label-hours');
+        const labelMinutes = document.getElementById('label-minutes');
+        const labelSeconds = document.getElementById('label-seconds');
+        
+        if (this.displayMode === 'only-seconds') {
+            labelDays.style.display = 'none';
+            labelHours.style.display = 'none';
+            labelMinutes.style.display = 'none';
+            labelSeconds.style.display = 'block';
+        } else if (this.displayMode === 'no-hours') {
+            labelDays.style.display = 'none';
+            labelHours.style.display = 'none';
+            labelMinutes.style.display = 'block';
+            labelSeconds.style.display = 'block';
+        } else if (this.displayMode === 'no-days') {
+            labelDays.style.display = 'none';
+            labelHours.style.display = 'block';
+            labelMinutes.style.display = 'block';
+            labelSeconds.style.display = 'block';
+        } else {
+            labelDays.style.display = 'block';
+            labelHours.style.display = 'block';
+            labelMinutes.style.display = 'block';
+            labelSeconds.style.display = 'block';
+        }
     }
 
     getRandomColor() {
@@ -479,7 +652,19 @@ class CountdownDisplay {
 
     createPixelsForString(timeString) {
         const newPixels = [];
-        let xOffset = 20;
+        
+        let totalWidth = 0;
+        for (let charIndex = 0; charIndex < timeString.length; charIndex++) {
+            const char = timeString[charIndex];
+            if (char === ':') {
+                totalWidth += 5 * (this.pixelSize + this.spacing) + this.sectionSpacing;
+            } else {
+                totalWidth += 5 * (this.pixelSize + this.spacing) + this.digitSpacing;
+            }
+        }
+        totalWidth -= this.digitSpacing;
+        
+        let xOffset = Math.max(10, (canvas.width - totalWidth) / 2);
 
         for (let charIndex = 0; charIndex < timeString.length; charIndex++) {
             const char = timeString[charIndex];
@@ -487,47 +672,54 @@ class CountdownDisplay {
 
             if (!pattern) continue;
 
-            // Pick a random color scheme for this specific digit/character
+            // Bepaal of dit een langzaam kleurveranderende sectie is
+            const isSlowColor = this.shouldUseSlowColor(charIndex);
             const charScheme = COLOR_SCHEMES[Math.floor(Math.random() * COLOR_SCHEMES.length)];
 
             for (let row = 0; row < pattern.length; row++) {
                 for (let col = 0; col < pattern[row].length; col++) {
                     if (pattern[row][col] === 1) {
                         const targetX = xOffset + col * (this.pixelSize + this.spacing);
-                        const targetY = 50 + row * (this.pixelSize + this.spacing);
+                        const targetY = this.topOffset + row * (this.pixelSize + this.spacing);
 
-                        // Use color from the specific scheme
-                        const color = charScheme[Math.floor(Math.random() * charScheme.length)];
+                        let color;
+                        if (isSlowColor) {
+                            color = getSlowChangingColorWithVariance();
+                        } else {
+                            color = charScheme[Math.floor(Math.random() * charScheme.length)];
+                        }
 
                         const pixel = new Pixel(
-                            targetX, // Start at target
-                            targetY, // Start at target
+                            targetX,
+                            targetY,
                             targetX,
                             targetY,
                             color,
                             this.pixelSize
                         );
 
-                        // Stagger arrival slightly for effect
                         pixel.arrivalProgress = -charIndex * 0.05 - (row + col) * 0.01;
-                        
-                        // Store which character index this pixel belongs to
                         pixel.charIndex = charIndex;
+                        pixel.isSlowColor = isSlowColor;
 
                         newPixels.push(pixel);
                     }
                 }
             }
 
-            // Update x offset
             if (char === ':') {
-                xOffset += 3 * (this.pixelSize + this.spacing) + this.sectionSpacing;
+                xOffset += 5 * (this.pixelSize + this.spacing) + this.sectionSpacing;
             } else {
                 xOffset += 5 * (this.pixelSize + this.spacing) + this.digitSpacing;
             }
         }
 
         return newPixels;
+    }
+
+    shouldUseSlowColor(char) {
+        // Alleen de dubbele punten krijgen de langzame kleurwisseling
+        return char === ':';
     }
 
     findChangedPositions(oldString, newString) {
@@ -541,8 +733,6 @@ class CountdownDisplay {
     }
 
     update(dt = 1) {
-        this.calculateSizes();
-
         const time = this.getTimeUntilNewYear();
         
         if (time.isNewYear) {
@@ -551,53 +741,50 @@ class CountdownDisplay {
             return;
         }
 
-        const currentSecond = time.seconds;
+        const oldDisplayMode = this.displayMode;
         const newTimeString = this.formatTime(time);
+        
+        // Herbereken sizes als displayMode verandert
+        if (oldDisplayMode !== this.displayMode || this.lastDisplayMode !== this.displayMode) {
+            this.calculateSizes();
+            this.updateLabels();
+            this.lastDisplayMode = this.displayMode;
+            // Force complete rebuild
+            this.currentTimeString = '';
+        }
 
-        // Check if time changed
+        const currentSecond = time.seconds;
+
         if (newTimeString !== this.currentTimeString) {
             const changedPositions = this.findChangedPositions(this.currentTimeString, newTimeString);
 
-            // Wissel kleurenschema elke seconde
             if (currentSecond !== this.lastSecond) {
                 this.colorSchemeIndex = (this.colorSchemeIndex + 1) % COLOR_SCHEMES.length;
                 this.lastSecond = currentSecond;
             }
 
-            // 1. Identify pixels that need to explode (belong to changed characters)
             if (this.currentTimeString && changedPositions.length > 0) {
                 this.explodePixelsAtPositions(changedPositions);
             }
 
-            // 2. Create ALL pixels for the new string
             const allNewPixels = this.createPixelsForString(newTimeString);
             
-            // 3. Merge: Keep existing stable pixels for unchanged characters, use new pixels for changed characters
             const mergedPixels = [];
             
-            // Add pixels for unchanged characters from current set (if they are stable)
             this.pixels.forEach(p => {
                 if (p.state === 'stable' && !changedPositions.includes(p.charIndex)) {
-                    // Update position in case of resize (re-calculate target based on current layout logic?)
-                    // For simplicity, we'll just assume they are in the right place or will be replaced if we strictly follow the new generation.
-                    // Actually, to be safe and handle resizes, it's better to regenerate everything but set state to 'stable' for unchanged ones.
-                    // But we don't have easy mapping.
-                    // Let's use the 'charIndex' property I added to Pixel.
                     mergedPixels.push(p);
                 }
             });
 
-            // Add new pixels for changed characters
             allNewPixels.forEach(p => {
                 if (changedPositions.includes(p.charIndex) || this.currentTimeString === '') {
                     mergedPixels.push(p);
                 }
             });
             
-            // If it's the first run, just use all new pixels
             if (this.currentTimeString === '') {
                 this.pixels = allNewPixels;
-                // Forceer dat ze er direct staan bij de start zodat je het hele getal ziet
                 this.pixels.forEach(p => {
                     p.state = 'stable';
                     p.scale = 1;
@@ -609,40 +796,47 @@ class CountdownDisplay {
 
             this.currentTimeString = newTimeString;
 
-            // Voeg vuurwerk toe bij elke seconde verandering
-            this.addFireworks();
+            // Voeg vuurpijl-raket toe die omhoog gaat en explodeert
+            this.addFireworkRocket();
         }
 
-        // Update alle pixels
-        this.pixels.forEach(pixel => pixel.update(dt));
+        this.pixels.forEach(pixel => {
+            pixel.update(dt);
+            if (pixel.isSlowColor && pixel.state === 'stable') {
+                pixel.color = getSlowChangingColorWithVariance();
+            }
+        });
 
-        // Update exploding pixels
         this.explodingPixels = this.explodingPixels.filter(pixel => {
             pixel.update(dt);
             return pixel.isAlive();
         });
 
-        // Update fireworks
         this.fireworks = this.fireworks.filter(particle => {
             particle.update(dt);
             return particle.isAlive();
         });
+
+        this.rockets = this.rockets.filter(rocket => {
+            rocket.update(dt);
+            return rocket.isAlive();
+        });
     }
 
     explodePixelsAtPositions(positions) {
-        // Vind pixels die bij de gewijzigde posities horen
-        // We filter them OUT of this.pixels and move them to this.explodingPixels
-        
         const canvasRect = canvas.getBoundingClientRect();
-        const g = 0.2; // same gravity as launch update (slower)
+        const g = 0.33;
 
-        // Bereken per cijfer de minimale y om een uniforme launch te geven
         const charMinY = {};
+        const charRot = {};
         this.pixels.forEach(p => {
             if (!positions.includes(p.charIndex)) return;
             const screenY = p.y + canvasRect.top + window.scrollY;
             if (charMinY[p.charIndex] === undefined || screenY < charMinY[p.charIndex]) {
                 charMinY[p.charIndex] = screenY;
+            }
+            if (charRot[p.charIndex] === undefined) {
+                charRot[p.charIndex] = (Math.random() - 0.5) * 0.18;
             }
         });
         
@@ -650,24 +844,22 @@ class CountdownDisplay {
         
         this.pixels.forEach(pixel => {
             if (positions.includes(pixel.charIndex)) {
-                // Bepaal maximale veilige start-snelheid op basis van vrije ruimte boven het pixel
                 const minY = charMinY[pixel.charIndex] ?? (pixel.y + canvasRect.top + window.scrollY);
-                const availableUp = Math.max(30, minY - 10); // ruimte tot top van scherm
+                const availableUp = Math.max(30, minY - 10);
                 let maxVy = -Math.sqrt(2 * g * availableUp);
-                maxVy *= 0.7; // nog lager
+                maxVy *= 0.7;
 
-                // Zelfde snelheid/rotatie voor alle pixels van dit cijfer
                 const vy = maxVy;
-                const vx = 0; // geen drift
-                const rot = 0; // geen rotatie
+                const vx = 0;
+                const rot = charRot[pixel.charIndex] ?? 0;
 
                 pixel.vy = vy;
                 pixel.vx = vx;
                 pixel.rotationSpeed = rot;
                 pixel.launch();
                 this.explodingPixels.push(pixel);
-                // Minimal burst (of none) to reduce particle load when digits leave
-                const burstCount = Math.random() < 0.5 ? 0 : 2 + Math.floor(Math.random() * 2); // 0-3 particles
+                
+                const burstCount = Math.random() < 0.5 ? 0 : 2 + Math.floor(Math.random() * 2);
                 const fxX = pixel.x + canvasRect.left;
                 const fxY = pixel.y + canvasRect.top;
                 for (let b = 0; b < burstCount; b++) {
@@ -681,30 +873,35 @@ class CountdownDisplay {
         this.pixels = remainingPixels;
     }
 
-    addFireworks() {
-        // Kleiner burst per seconde voor minder lag
-        const numFireworks = 1 + Math.floor(Math.random() * 1); // 1 of 2
-        for (let i = 0; i < numFireworks; i++) {
-            const x = Math.random() * fireworksCanvas.width;
-            const y = Math.random() * fireworksCanvas.height * 0.6;
-            const color = this.getRandomColor();
-
-            for (let j = 0; j < 18; j++) {
-                this.fireworks.push(new FireworkParticle(x, y, color));
-            }
-        }
+    addFireworkRocket() {
+        // Voeg een vuurpijl toe die omhoog gaat en explodeert
+        const x = Math.random() * fireworksCanvas.width;
+        const targetY = 50 + Math.random() * (fireworksCanvas.height * 0.4);
+        const color = this.getRandomColor();
+        this.rockets.push(new FireworkRocket(x, targetY, color));
     }
 
     createMassiveFireworks() {
-        // Groots maar performance-vriendelijker vuurwerk voor nieuwjaar
-        for (let i = 0; i < 12; i++) {
+        // Enorm vuurwerk voor nieuwjaar
+        for (let i = 0; i < 30; i++) {
+            setTimeout(() => {
+                const x = Math.random() * fireworksCanvas.width;
+                const targetY = 50 + Math.random() * (fireworksCanvas.height * 0.5);
+                const scheme = COLOR_SCHEMES[Math.floor(Math.random() * COLOR_SCHEMES.length)];
+                const color = scheme[Math.floor(Math.random() * scheme.length)];
+                this.rockets.push(new FireworkRocket(x, targetY, color));
+            }, i * 150);
+        }
+        
+        // Extra explosies
+        for (let i = 0; i < 20; i++) {
             setTimeout(() => {
                 const x = Math.random() * fireworksCanvas.width;
                 const y = Math.random() * fireworksCanvas.height * 0.5;
                 const schemeIndex = Math.floor(Math.random() * COLOR_SCHEMES.length);
                 const scheme = COLOR_SCHEMES[schemeIndex];
 
-                for (let j = 0; j < 70; j++) {
+                for (let j = 0; j < 100; j++) {
                     const color = scheme[Math.floor(Math.random() * scheme.length)];
                     this.fireworks.push(new FireworkParticle(x, y, color));
                 }
@@ -713,23 +910,17 @@ class CountdownDisplay {
     }
 
     draw() {
-        // Clear canvases
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         fireworksCtx.clearRect(0, 0, fireworksCanvas.width, fireworksCanvas.height);
 
-        // Get canvas position for coordinate conversion
         const canvasRect = canvas.getBoundingClientRect();
         const offsetX = canvasRect.left + window.scrollX;
         const offsetY = canvasRect.top + window.scrollY;
 
-        // Draw stable/arriving pixels on main canvas
         this.pixels.forEach(pixel => pixel.draw(ctx));
-
-        // Draw exploding/launching pixels on fireworks canvas (so they can go outside the box!)
         this.explodingPixels.forEach(pixel => pixel.drawOnFireworks(fireworksCtx, offsetX, offsetY));
-
-        // Draw fireworks
         this.fireworks.forEach(particle => particle.draw(fireworksCtx));
+        this.rockets.forEach(rocket => rocket.draw(fireworksCtx));
     }
 }
 
