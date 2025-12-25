@@ -5,7 +5,7 @@
 // ==========================================
 // QUALITY SYSTEM (5 levels)
 // ==========================================
-let qualityMode = 'auto'; // 'auto' or 1-5
+let qualityMode = 'auto'; // 'auto' or 'manual'
 let currentQuality = 3; // Current quality level 1-5
 let fpsHistory = [];
 let lastFpsCheck = performance.now();
@@ -39,6 +39,9 @@ function checkQualityAdjustment(timestamp) {
             else if (avgFPS >= 35) currentQuality = 3;
             else if (avgFPS >= 25) currentQuality = 2;
             else currentQuality = 1;
+            
+            // Update star animation when quality changes
+            updateStarAnimation();
         }
         
         lastFpsCheck = timestamp;
@@ -1343,14 +1346,11 @@ function updateQualityDisplay() {
     if (currentFpsEl) currentFpsEl.textContent = currentFPS;
 }
 
-// Update every frame
-setInterval(updateQualityDisplay, 100);
+// Update every second instead of 100ms
+setInterval(updateQualityDisplay, 1000);
 
 // Star animation control based on quality
 function updateStarAnimation() {
-    const beforeEl = document.querySelector('body::before');
-    const afterEl = document.querySelector('body::after');
-    
     if (currentQuality === 1) {
         // Mode 1: Stars static
         document.body.classList.add('stars-static');
