@@ -1317,8 +1317,11 @@ qualityModeRadios.forEach(radio => {
             qualityLevelsDiv.style.display = 'block';
             qualityMode = 'manual';
             // Set to current quality level
-            const currentLevelRadio = document.querySelector(`input[name="quality-level"][value="${currentQuality}"]`);
-            if (currentLevelRadio) currentLevelRadio.checked = true;
+            qualityLevelRadios.forEach(radio => {
+                if (parseInt(radio.value) === currentQuality) {
+                    radio.checked = true;
+                }
+            });
         } else {
             qualityLevelsDiv.style.display = 'none';
             qualityMode = 'auto';
