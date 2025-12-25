@@ -25,15 +25,6 @@ body::before {
     height: 200%;
     background-image: 
         radial-gradient(2px 2px at 20px 30px, #fff, transparent),
-        radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.8), transparent),
-        radial-gradient(1px 1px at 90px 40px, #fff, transparent),
-        radial-gradient(2px 2px at 130px 80px, rgba(255,255,255,0.6), transparent),
-        radial-gradient(1px 1px at 160px 120px, #fff, transparent),
-        radial-gradient(2px 2px at 200px 50px, rgba(255,255,255,0.9), transparent),
-        radial-gradient(1px 1px at 250px 90px, #fff, transparent),
-        radial-gradient(2px 2px at 300px 150px, rgba(255,255,255,0.7), transparent),
-        radial-gradient(1px 1px at 350px 60px, #fff, transparent),
-        radial-gradient(2px 2px at 400px 100px, rgba(255,255,255,0.8), transparent),
         radial-gradient(1px 1px at 450px 180px, #fff, transparent),
         radial-gradient(2px 2px at 500px 40px, rgba(255,255,255,0.6), transparent),
         radial-gradient(1px 1px at 550px 130px, #fff, transparent),
@@ -112,7 +103,7 @@ body::after {
     height: 100%;
     pointer-events: none;
     z-index: 2;
-    overflow: hidden;
+    overflow: hidden
 }
 
 .shooting-star {
@@ -197,14 +188,20 @@ body::after {
     text-align: center;
     z-index: 10;
     position: relative;
+    width: 100%;
+    padding: 0 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .title {
     color: #fff;
-    font-size: 3rem;
-    margin-bottom: 30px;
+    font-size: clamp(1.5rem, 5vw, 3rem);
+    margin-bottom: clamp(15px, 4vw, 30px);
     text-shadow: 0 0 20px #ff6b35, 0 0 40px #ff6b35, 0 0 60px #ff6b35;
     animation: glow 2s ease-in-out infinite alternate;
+    white-space: nowrap;
 }
 
 @keyframes glow {
@@ -222,6 +219,8 @@ body::after {
     border-radius: 0;
     background: transparent;
     box-shadow: none;
+    width: min(95vw, 1200px);
+    height: auto;
 }
 
 .labels {
@@ -230,33 +229,123 @@ body::after {
     align-items: center;
     width: 100%;
     max-width: 1400px;
-    margin: -10px auto 0;
+    margin: 0;
     padding: 0;
     gap: 0;
     position: relative;
-    top: 30px; /* 2/3 van de ruimte omhoog */
+    top: 0;
+    margin-top: -30px; /* Pull labels up closer to digits */
 }
 
 .labels span {
     color: #fff;
-    font-size: 0.95rem;
+    font-size: clamp(0.65rem, 2vw, 0.95rem);
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: clamp(0.5px, 0.5vw, 1px);
     opacity: 0.9;
     text-align: center;
-    padding: 0 10px;
+    padding: 0 clamp(2px, 1vw, 10px);
     flex: 1;
     max-width: 25%;
+    white-space: nowrap;
 }
 
 #fireworksCanvas {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
+    right: 0;
+    bottom: 0;
     pointer-events: none;
     z-index: 5;
+}
+
+.stats-panel {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    transform: none;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    padding: 6px;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.35);
+    z-index: 120;
+    backdrop-filter: blur(4px);
+    transition: all 0.3s ease;
+    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.stats-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stats-mini-time {
+    font-family: monospace;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 11px;
+}
+
+.stats-panel.collapsed {
+    padding: 4px;
+    background: rgba(0, 0, 0, 0.3); /* Slight background for readability */
+    box-shadow: none;
+    backdrop-filter: blur(2px);
+}
+
+.stats-toggle {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 11px;
+    cursor: pointer;
+    box-shadow: none;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.stats-toggle:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+.stats-toggle:active {
+    transform: translateY(1px);
+}
+
+.stats-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11px;
+    margin-top: 6px;
+    max-height: 500px;
+    opacity: 1;
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 8px;
+    border-radius: 6px;
+}
+
+.stats-panel.collapsed .stats-content {
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+}
+
+.stat-line {
+    line-height: 1.4;
+    padding: 2px 0;
 }
 
 .happy-new-year {

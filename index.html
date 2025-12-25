@@ -16,7 +16,7 @@
         <div class="shooting-star" style="--top: 65%; --delay: 200s;"></div>
     </div>
     <div class="container">
-        <h1 class="title">🎆 Countdown to 2026 🎆</h1>
+        <h1 class="title">Countdown to 2026</h1>
         <canvas id="countdownCanvas"></canvas>
         <div class="labels" id="labels">
             <span id="label-days">Days</span>
@@ -29,6 +29,19 @@
         </div>
     </div>
     <canvas id="fireworksCanvas"></canvas>
+    <div class="stats-panel collapsed" id="statsPanel">
+        <div class="stats-header">
+            <button class="stats-toggle" id="statsToggle">Stats</button>
+            <span class="stats-mini-time" id="stat-mini-time">00:00:00</span>
+        </div>
+        <div class="stats-content" id="statsContent">
+            <div class="stat-line">Time watched: <span id="stat-time">-</span></div>
+            <div class="stat-line">Fireworks fired: <span id="stat-shots">-</span></div>
+            <div class="stat-line" title="Calculated based on the estimated cost if these fireworks were real.">Est. cost: €<span id="stat-cost">-</span> ℹ️</div>
+            <div class="stat-line">Visitors: <span id="stat-visitors">-</span></div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="countdown.js"></script>
 </body>
 </html>
