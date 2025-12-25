@@ -48,8 +48,7 @@ function checkQualityAdjustment(timestamp) {
     }
 }
 
-// Legacy compatibility
-const isLowEnd = false;
+// Quality system constants
 const MAX_PARTICLES = 400;
 const MAX_ROCKETS = 8;
 const MAX_EXPLODING_PIXELS = 300;
@@ -1038,8 +1037,8 @@ class CountdownDisplay {
     }
 
     createMassiveFireworks() {
-        // Massive fireworks for New Year
-        const rocketCount = isLowEnd ? 15 : 30;
+        // Massive fireworks for New Year (quality-based)
+        const rocketCount = currentQuality <= 2 ? 15 : 30;
         for (let i = 0; i < rocketCount; i++) {
             setTimeout(() => {
                 const x = Math.random() * fireworksCanvas.width;
@@ -1051,7 +1050,7 @@ class CountdownDisplay {
         }
         
         // Extra explosions
-        const explosionCount = isLowEnd ? 10 : 20;
+        const explosionCount = currentQuality <= 2 ? 10 : 20;
         for (let i = 0; i < explosionCount; i++) {
             setTimeout(() => {
                 const x = Math.random() * fireworksCanvas.width;
@@ -1059,7 +1058,7 @@ class CountdownDisplay {
                 const schemeIndex = Math.floor(Math.random() * COLOR_SCHEMES.length);
                 const scheme = COLOR_SCHEMES[schemeIndex];
 
-                const particleCount = isLowEnd ? 50 : 100;
+                const particleCount = currentQuality <= 2 ? 50 : 100;
                 for (let j = 0; j < particleCount; j++) {
                     const color = scheme[Math.floor(Math.random() * scheme.length)];
                     this.fireworks.push(new FireworkParticle(x, y, color));
