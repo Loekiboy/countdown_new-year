@@ -1399,5 +1399,8 @@ fireworksCanvas.addEventListener('click', (e) => {
     }
 });
 
+// Initialize star animation on page load
+updateStarAnimation();
+
 console.log('🎆 Countdown to New Year 2026 started! 🎆');
 console.log('💡 Tip: Click anywhere on the screen for extra fireworks!');
