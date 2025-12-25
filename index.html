@@ -32,6 +32,7 @@
     <div class="stats-panel collapsed" id="statsPanel">
         <div class="stats-header">
             <button class="stats-toggle" id="statsToggle">Stats</button>
+            <button class="quality-toggle" id="qualityToggle" title="Quality Settings">⚙️</button>
             <span class="stats-mini-time" id="stat-mini-time">00:00:00</span>
         </div>
         <div class="stats-content" id="statsContent">
@@ -39,6 +40,56 @@
             <div class="stat-line">Fireworks fired: <span id="stat-shots">-</span></div>
             <div class="stat-line" title="Calculated based on the estimated cost if these fireworks were real.">Est. cost: €<span id="stat-cost">-</span> ℹ️</div>
             <div class="stat-line">Visitors: <span id="stat-visitors">-</span></div>
+        </div>
+        <div class="quality-content" id="qualityContent" style="display: none;">
+            <div class="quality-header">Quality Settings</div>
+            <div class="quality-mode">
+                <label>
+                    <input type="radio" name="quality-mode" value="auto" checked>
+                    Auto (FPS: <span id="current-fps">--</span>)
+                </label>
+            </div>
+            <div class="quality-mode">
+                <label>
+                    <input type="radio" name="quality-mode" value="manual">
+                    Manual
+                </label>
+            </div>
+            <div id="quality-levels" style="display: none;">
+                <div class="quality-level">
+                    <label>
+                        <input type="radio" name="quality-level" value="1">
+                        Level 1 (Minimal)
+                    </label>
+                </div>
+                <div class="quality-level">
+                    <label>
+                        <input type="radio" name="quality-level" value="2">
+                        Level 2 (Low)
+                    </label>
+                </div>
+                <div class="quality-level">
+                    <label>
+                        <input type="radio" name="quality-level" value="3">
+                        Level 3 (Medium)
+                    </label>
+                </div>
+                <div class="quality-level">
+                    <label>
+                        <input type="radio" name="quality-level" value="4">
+                        Level 4 (High)
+                    </label>
+                </div>
+                <div class="quality-level">
+                    <label>
+                        <input type="radio" name="quality-level" value="5">
+                        Level 5 (Ultra)
+                    </label>
+                </div>
+            </div>
+            <div class="quality-info">
+                <strong>Current: Level <span id="current-quality">3</span></strong>
+            </div>
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
