@@ -2,12 +2,57 @@
 // 🎆 PIXEL ART COUNTDOWN TO NEW YEAR 🎆
 // ==========================================
 
-// Performance detection - check if device is low-end
-const isLowEnd = navigator.hardwareConcurrency <= 4 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-const MAX_PARTICLES = isLowEnd ? 150 : 400;
-const MAX_ROCKETS = isLowEnd ? 3 : 8;
-const MAX_EXPLODING_PIXELS = isLowEnd ? 100 : 300;
-const TRAIL_LENGTH = isLowEnd ? 6 : 12;
+// ==========================================
+// QUALITY SYSTEM (5 levels)
+// ==========================================
+let qualityMode = 'auto'; // 'auto' or 'manual'
+let currentQuality = 3; // Current quality level 1-5
+let fpsHistory = [];
+let lastFpsCheck = performance.now();
+
+// FPS monitoring
+let frameCount = 0;
+let fpsStartTime = performance.now();
+let currentFPS = 60;
+
+function updateFPS(timestamp) {
+    frameCount++;
+    const elapsed = timestamp - fpsStartTime;
+    if (elapsed >= 1000) {
+        currentFPS = Math.round((frameCount * 1000) / elapsed);
+        frameCount = 0;
+        fpsStartTime = timestamp;
+    }
+}
+
+function checkQualityAdjustment(timestamp) {
+    if (timestamp - lastFpsCheck >= 5000) {
+        fpsHistory.push(currentFPS);
+        if (fpsHistory.length > 6) fpsHistory.shift();
+        
+        if (qualityMode === 'auto' && fpsHistory.length >= 2) {
+            const avgFPS = fpsHistory.reduce((a, b) => a + b, 0) / fpsHistory.length;
+            
+            // Determine quality based on FPS
+            if (avgFPS >= 55) currentQuality = 5;
+            else if (avgFPS >= 45) currentQuality = 4;
+            else if (avgFPS >= 35) currentQuality = 3;
+            else if (avgFPS >= 25) currentQuality = 2;
+            else currentQuality = 1;
+            
+            // Update star animation when quality changes
+            updateStarAnimation();
+        }
+        
+        lastFpsCheck = timestamp;
+    }
+}
+
+// Quality system constants
+const MAX_PARTICLES = 400;
+const MAX_ROCKETS = 8;
+const MAX_EXPLODING_PIXELS = 300;
+const TRAIL_LENGTH = 12;
 
 // Canvas setup
 const canvas = document.getElementById('countdownCanvas');
@@ -232,12 +277,14 @@ class Pixel {
                 this.explode();
             }
         } else if (this.state === 'exploding') {
-            // Add trail (limited for performance)
-            if (this.trail.length < TRAIL_LENGTH) {
-                this.trail.push({ x: this.x, y: this.y, alpha: this.alpha, size: this.size * this.scale });
-            } else {
-                this.trail.shift();
-                this.trail.push({ x: this.x, y: this.y, alpha: this.alpha, size: this.size * this.scale });
+            // Add trail only if quality >= 3
+            if (currentQuality >= 3) {
+                if (this.trail.length < TRAIL_LENGTH) {
+                    this.trail.push({ x: this.x, y: this.y, alpha: this.alpha, size: this.size * this.scale });
+                } else {
+                    this.trail.shift();
+                    this.trail.push({ x: this.x, y: this.y, alpha: this.alpha, size: this.size * this.scale });
+                }
             }
             
             this.x += this.vx * dt;
@@ -320,27 +367,23 @@ class Pixel {
         const screenX = this.x * scaleX + offsetX;
         const screenY = this.y * scaleY + offsetY;
 
-        // Draw trail first (optimized loop)
-        const trailLen = this.trail.length;
-        for (let i = 0; i < trailLen; i++) {
-            const t = this.trail[i];
-            const trailX = t.x * scaleX + offsetX;
-            const trailY = t.y * scaleY + offsetY;
-            const trailAlpha = t.alpha * (i / trailLen) * 0.6;
-            if (trailAlpha < 0.02) continue; // Skip nearly invisible trails
-            const trailSize = t.size * (i / trailLen) * scaleX;
-            
-            ctx.save();
-            ctx.globalAlpha = trailAlpha;
-            ctx.fillStyle = this.color;
-            // Minimal glow for flying digits
-            if (!isLowEnd) {
-                ctx.shadowBlur = 5;
-                ctx.shadowColor = this.color;
+        // Draw trail first (if quality >= 3)
+        if (currentQuality >= 3) {
+            const trailLen = this.trail.length;
+            for (let i = 0; i < trailLen; i++) {
+                const t = this.trail[i];
+                const trailX = t.x * scaleX + offsetX;
+                const trailY = t.y * scaleY + offsetY;
+                const trailAlpha = t.alpha * (i / trailLen) * 0.6;
+                if (trailAlpha < 0.02) continue; // Skip nearly invisible trails
+                const trailSize = t.size * (i / trailLen) * scaleX;
+                
+                ctx.save();
+                ctx.globalAlpha = trailAlpha;
+                ctx.fillStyle = this.color;
+                ctx.fillRect(trailX - trailSize/2, trailY - trailSize/2, trailSize, trailSize);
+                ctx.restore();
             }
-            
-            ctx.fillRect(trailX - trailSize/2, trailY - trailSize/2, trailSize, trailSize);
-            ctx.restore();
         }
 
         ctx.save();
@@ -355,8 +398,8 @@ class Pixel {
         }
         
         ctx.globalAlpha = this.alpha;
-        // Minimal glow for flying digits
-        if (!isLowEnd) {
+        // Glow for flying digits (quality >= 4)
+        if (currentQuality >= 4) {
             ctx.shadowBlur = 10;
             ctx.shadowColor = this.color;
         }
@@ -366,8 +409,8 @@ class Pixel {
         const s = this.size;
         ctx.fillRect(-s/2, -s/2, s, s);
 
-        // Add sparkle/glow ring when exploding (only on high-end, very subtle)
-        if (!isLowEnd && this.state === 'exploding' && this.alpha > 0.5 && Math.random() < 0.3) {
+        // Add sparkle/glow ring when exploding (quality >= 4)
+        if (currentQuality >= 4 && this.state === 'exploding' && this.alpha > 0.5 && Math.random() < 0.3) {
             ctx.beginPath();
             ctx.arc(0, 0, s, 0, Math.PI * 2);
             ctx.strokeStyle = this.color;
@@ -403,9 +446,9 @@ class FireworkRocket {
 
     update(dt = 1) {
         if (!this.exploded) {
-            // Add trail
+            // Add trail (always for rockets going up)
             this.trail.push({ x: this.x, y: this.y, alpha: 1 });
-            if (this.trail.length > (isLowEnd ? 8 : 15)) this.trail.shift();
+            if (this.trail.length > 15) this.trail.shift();
             
             // Move up
             this.y -= this.speed * dt;
@@ -424,7 +467,7 @@ class FireworkRocket {
             }
         }
         
-        // Update particles (optimized)
+        // Update particles
         for (let i = this.particles.length - 1; i >= 0; i--) {
             const p = this.particles[i];
             p.x += p.vx * dt;
@@ -432,11 +475,14 @@ class FireworkRocket {
             p.vy += 0.08 * dt;
             p.alpha -= 0.015 * dt;
             
-            if (p.alpha > 0.1 && p.trail.length < (isLowEnd ? 4 : 8)) {
-                p.trail.push({ x: p.x, y: p.y, alpha: p.alpha });
-            } else if (p.trail.length >= (isLowEnd ? 4 : 8)) {
-                p.trail.shift();
-                p.trail.push({ x: p.x, y: p.y, alpha: p.alpha });
+            // Add trail for explosion particles (quality >= 5)
+            if (currentQuality >= 5) {
+                if (p.alpha > 0.1 && p.trail.length < 8) {
+                    p.trail.push({ x: p.x, y: p.y, alpha: p.alpha });
+                } else if (p.trail.length >= 8) {
+                    p.trail.shift();
+                    p.trail.push({ x: p.x, y: p.y, alpha: p.alpha });
+                }
             }
             
             if (p.alpha <= 0) {
@@ -448,7 +494,7 @@ class FireworkRocket {
     explode() {
         this.exploded = true;
         // NOTE: Shot already counted in constructor, don't count again here
-        const numParticles = isLowEnd ? (25 + Math.floor(Math.random() * 20)) : (40 + Math.floor(Math.random() * 30));
+        const numParticles = 40 + Math.floor(Math.random() * 30);
         const scheme = COLOR_SCHEMES[Math.floor(Math.random() * COLOR_SCHEMES.length)];
         
         for (let i = 0; i < numParticles; i++) {
@@ -475,7 +521,7 @@ class FireworkRocket {
             ctx.save();
             ctx.globalAlpha = t.alpha * 0.7;
             ctx.fillStyle = this.color;
-            if (!isLowEnd) {
+            if (currentQuality >= 4) {
                 ctx.shadowBlur = 10;
                 ctx.shadowColor = this.color;
             }
@@ -488,7 +534,7 @@ class FireworkRocket {
         if (!this.exploded) {
             ctx.save();
             ctx.fillStyle = '#fff';
-            if (!isLowEnd) {
+            if (currentQuality >= 4) {
                 ctx.shadowBlur = 15;
                 ctx.shadowColor = this.color;
             }
@@ -501,8 +547,8 @@ class FireworkRocket {
         // Draw explosion particles
         for (let j = 0; j < this.particles.length; j++) {
             const p = this.particles[j];
-            // Trail (simplified on low-end)
-            if (!isLowEnd) {
+            // Trail (quality >= 5)
+            if (currentQuality >= 5) {
                 for (let i = 0; i < p.trail.length; i++) {
                     const t = p.trail[i];
                     ctx.save();
@@ -517,7 +563,7 @@ class FireworkRocket {
             ctx.save();
             ctx.globalAlpha = p.alpha;
             ctx.fillStyle = p.color;
-            if (!isLowEnd) {
+            if (currentQuality >= 4) {
                 ctx.shadowBlur = 10;
                 ctx.shadowColor = p.color;
             }
@@ -550,7 +596,7 @@ class FireworkParticle {
     }
 
     update(dt = 1) {
-        if (this.trail.length < (isLowEnd ? 4 : 8)) {
+        if (this.trail.length < 8) {
             this.trail.push({ x: this.x, y: this.y, alpha: this.alpha });
         } else {
             this.trail.shift();
@@ -565,8 +611,8 @@ class FireworkParticle {
     }
 
     draw(ctx) {
-        // Trail (skip on low-end for better performance)
-        if (!isLowEnd) {
+        // Trail (quality dependent)
+        if (currentQuality >= 3) {
             for (let i = 0; i < this.trail.length; i++) {
                 const t = this.trail[i];
                 ctx.fillStyle = this.color;
@@ -578,7 +624,7 @@ class FireworkParticle {
 
         ctx.fillStyle = this.color;
         ctx.globalAlpha = this.alpha;
-        if (!isLowEnd) {
+        if (currentQuality >= 4) {
             ctx.shadowBlur = 15;
             ctx.shadowColor = this.color;
         }
@@ -878,8 +924,8 @@ class CountdownDisplay {
 
             this.currentTimeString = newTimeString;
 
-            // Add firework rocket that goes up and explodes (limited)
-            if (this.rockets.length < MAX_ROCKETS) {
+            // Add firework rocket only if quality >= 2
+            if (currentQuality >= 2 && this.rockets.length < MAX_ROCKETS) {
                 this.addFireworkRocket();
             }
         }
@@ -966,8 +1012,8 @@ class CountdownDisplay {
                 pixel.launch();
                 this.explodingPixels.push(pixel);
                 
-                // Add burst particles (reduced on low-end)
-                const burstCount = isLowEnd ? 0 : (Math.random() < 0.5 ? 0 : 2 + Math.floor(Math.random() * 2));
+                // Add burst particles (quality dependent)
+                const burstCount = currentQuality >= 3 ? (Math.random() < 0.5 ? 0 : 2 + Math.floor(Math.random() * 2)) : 0;
                 // Convert pixel position (relative to countdown canvas) to fireworks canvas coords
                 const fxX = pixel.x * scaleX + canvasRect.left;
                 const fxY = pixel.y * scaleY + canvasRect.top;
@@ -991,8 +1037,8 @@ class CountdownDisplay {
     }
 
     createMassiveFireworks() {
-        // Massive fireworks for New Year
-        const rocketCount = isLowEnd ? 15 : 30;
+        // Massive fireworks for New Year (quality-based)
+        const rocketCount = currentQuality <= 2 ? 15 : 30;
         for (let i = 0; i < rocketCount; i++) {
             setTimeout(() => {
                 const x = Math.random() * fireworksCanvas.width;
@@ -1004,7 +1050,7 @@ class CountdownDisplay {
         }
         
         // Extra explosions
-        const explosionCount = isLowEnd ? 10 : 20;
+        const explosionCount = currentQuality <= 2 ? 10 : 20;
         for (let i = 0; i < explosionCount; i++) {
             setTimeout(() => {
                 const x = Math.random() * fireworksCanvas.width;
@@ -1012,7 +1058,7 @@ class CountdownDisplay {
                 const schemeIndex = Math.floor(Math.random() * COLOR_SCHEMES.length);
                 const scheme = COLOR_SCHEMES[schemeIndex];
 
-                const particleCount = isLowEnd ? 50 : 100;
+                const particleCount = currentQuality <= 2 ? 50 : 100;
                 for (let j = 0; j < particleCount; j++) {
                     const color = scheme[Math.floor(Math.random() * scheme.length)];
                     this.fireworks.push(new FireworkParticle(x, y, color));
@@ -1025,8 +1071,8 @@ class CountdownDisplay {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         fireworksCtx.clearRect(0, 0, fireworksCanvas.width, fireworksCanvas.height);
         
-        // Use lighter composite only on high-end devices for better performance
-        if (!isLowEnd) {
+        // Use lighter composite on quality >= 3
+        if (currentQuality >= 3) {
             fireworksCtx.globalCompositeOperation = 'lighter';
         }
 
@@ -1148,6 +1194,10 @@ function animate(timestamp) {
     const dt = Math.max(0.5, Math.min(3, (timestamp - lastTime) / 16.67)); // clamp to avoid spikes
     lastTime = timestamp;
 
+    // Update FPS and check quality
+    updateFPS(timestamp);
+    checkQualityAdjustment(timestamp);
+
     countdown.update(dt);
     countdown.draw();
     requestAnimationFrame(animate);
@@ -1167,7 +1217,10 @@ const statShotsEl = document.getElementById('stat-shots');
 const statCostEl = document.getElementById('stat-cost');
 const statVisitorsEl = document.getElementById('stat-visitors');
 const statsToggleBtn = document.getElementById('statsToggle');
+const qualityToggleBtn = document.getElementById('qualityToggle');
 const statsPanel = document.getElementById('statsPanel');
+const statsContent = document.getElementById('statsContent');
+const qualityContent = document.getElementById('qualityContent');
 
 function formatSecondsToHMS(sec) {
     const s = Math.max(0, Math.floor(sec));
@@ -1197,8 +1250,7 @@ async function fetchAggregateStats() {
         if (statTimeEl) statTimeEl.textContent = timeString;
         
         // Update mini time display in header
-        const miniTimeEl = document.getElementById('stat-mini-time');
-        if (miniTimeEl) miniTimeEl.textContent = timeString;
+        updateMiniTime();
         
         if (statShotsEl) statShotsEl.textContent = totalShots;
         if (statCostEl) statCostEl.textContent = (totalShots * COST_PER_SHOT).toFixed(2);
@@ -1208,19 +1260,111 @@ async function fetchAggregateStats() {
     }
 }
 
-// Toggle panel collapsed/expanded
+// Update mini time display with current local time
+function updateMiniTime() {
+    const now = new Date();
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const seconds = now.getSeconds().toString().padStart(2, '0');
+    const miniTimeEl = document.getElementById('stat-mini-time');
+    if (miniTimeEl) miniTimeEl.textContent = `${hours}:${minutes}:${seconds}`;
+}
+
+// Update mini time every second
+setInterval(updateMiniTime, 1000);
+updateMiniTime();
+
+// Toggle stats panel collapsed/expanded
 if (statsToggleBtn && statsPanel) {
     statsToggleBtn.addEventListener('click', () => {
+        const wasCollapsed = statsPanel.classList.contains('collapsed');
         statsPanel.classList.toggle('collapsed');
-        if (!statsPanel.classList.contains('collapsed')) {
+        
+        // Hide quality content when opening stats
+        if (!wasCollapsed) {
+            qualityContent.style.display = 'none';
+            statsContent.style.display = 'flex';
+        } else {
             fetchAggregateStats();
         }
     });
 }
 
+// Toggle quality settings
+if (qualityToggleBtn && qualityContent) {
+    qualityToggleBtn.addEventListener('click', () => {
+        const isQualityVisible = qualityContent.style.display !== 'none';
+        
+        if (isQualityVisible) {
+            qualityContent.style.display = 'none';
+            statsContent.style.display = 'flex';
+        } else {
+            statsPanel.classList.remove('collapsed');
+            statsContent.style.display = 'none';
+            qualityContent.style.display = 'flex';
+        }
+    });
+}
+
+// Quality mode radio buttons
+const qualityModeRadios = document.querySelectorAll('input[name="quality-mode"]');
+const qualityLevelRadios = document.querySelectorAll('input[name="quality-level"]');
+const qualityLevelsDiv = document.getElementById('quality-levels');
+
+qualityModeRadios.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+        if (e.target.value === 'manual') {
+            qualityLevelsDiv.style.display = 'block';
+            qualityMode = 'manual';
+            // Set to current quality level
+            qualityLevelRadios.forEach(radio => {
+                if (parseInt(radio.value) === currentQuality) {
+                    radio.checked = true;
+                }
+            });
+        } else {
+            qualityLevelsDiv.style.display = 'none';
+            qualityMode = 'auto';
+        }
+    });
+});
+
+qualityLevelRadios.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+        if (qualityMode === 'manual') {
+            currentQuality = parseInt(e.target.value);
+            updateQualityDisplay();
+            updateStarAnimation();
+        }
+    });
+});
+
+// Update quality display
+function updateQualityDisplay() {
+    const currentQualityEl = document.getElementById('current-quality');
+    if (currentQualityEl) currentQualityEl.textContent = currentQuality;
+    
+    const currentFpsEl = document.getElementById('current-fps');
+    if (currentFpsEl) currentFpsEl.textContent = currentFPS;
+}
+
+// Update every second instead of 100ms
+setInterval(updateQualityDisplay, 1000);
+
+// Star animation control based on quality
+function updateStarAnimation() {
+    if (currentQuality === 1) {
+        // Mode 1: Stars static
+        document.body.classList.add('stars-static');
+    } else {
+        // Mode 2+: Stars moving
+        document.body.classList.remove('stars-static');
+    }
+}
+
 // Auto-refresh stats every 5 seconds when panel is open
 setInterval(() => {
-    if (statsPanel && !statsPanel.classList.contains('collapsed')) {
+    if (statsPanel && !statsPanel.classList.contains('collapsed') && statsContent.style.display !== 'none') {
         fetchAggregateStats();
     }
 }, 5000);
@@ -1240,7 +1384,7 @@ canvas.addEventListener('click', (e) => {
 
     fireworkShots += 1; // Count user click as a shot
     const scheme = COLOR_SCHEMES[Math.floor(Math.random() * COLOR_SCHEMES.length)];
-    const particleCount = isLowEnd ? 30 : 50;
+    const particleCount = 50;
     for (let i = 0; i < particleCount; i++) {
         const color = scheme[Math.floor(Math.random() * scheme.length)];
         countdown.fireworks.push(new FireworkParticle(x, y, color));
@@ -1251,12 +1395,15 @@ canvas.addEventListener('click', (e) => {
 fireworksCanvas.addEventListener('click', (e) => {
     fireworkShots += 1; // Count user click as a shot
     const scheme = COLOR_SCHEMES[Math.floor(Math.random() * COLOR_SCHEMES.length)];
-    const particleCount = isLowEnd ? 50 : 80;
+    const particleCount = 80;
     for (let i = 0; i < particleCount; i++) {
         const color = scheme[Math.floor(Math.random() * scheme.length)];
         countdown.fireworks.push(new FireworkParticle(e.clientX, e.clientY, color));
     }
 });
+
+// Initialize star animation on page load
+updateStarAnimation();
 
 console.log('🎆 Countdown to New Year 2026 started! 🎆');
 console.log('💡 Tip: Click anywhere on the screen for extra fireworks!');
