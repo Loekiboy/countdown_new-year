@@ -14,6 +14,40 @@ let lastFpsCheck = performance.now();
 let frameCount = 0;
 let fpsStartTime = performance.now();
 let currentFPS = 60;
+let maxRefreshRate = 60; // Default to 60Hz
+
+// Detect screen refresh rate
+function detectRefreshRate() {
+    let lastTime = performance.now();
+    let framesSampled = 0;
+    let refreshRates = [];
+    
+    function measure(currentTime) {
+        const delta = currentTime - lastTime;
+        if (delta > 0) {
+            const rate = Math.round(1000 / delta);
+            if (rate >= 24 && rate <= 240) { // Reasonable range
+                refreshRates.push(rate);
+            }
+        }
+        lastTime = currentTime;
+        framesSampled++;
+        
+        if (framesSampled < 60) {
+            requestAnimationFrame(measure);
+        } else {
+            // Calculate median refresh rate
+            refreshRates.sort((a, b) => a - b);
+            maxRefreshRate = refreshRates[Math.floor(refreshRates.length / 2)] || 60;
+            console.log(`Detected screen refresh rate: ${maxRefreshRate}Hz`);
+        }
+    }
+    
+    requestAnimationFrame(measure);
+}
+
+// Start detecting refresh rate
+detectRefreshRate();
 
 function updateFPS(timestamp) {
     frameCount++;
@@ -33,11 +67,17 @@ function checkQualityAdjustment(timestamp) {
         if (qualityMode === 'auto' && fpsHistory.length >= 2) {
             const avgFPS = fpsHistory.reduce((a, b) => a + b, 0) / fpsHistory.length;
             
-            // Determine quality based on FPS
-            if (avgFPS >= 55) currentQuality = 5;
-            else if (avgFPS >= 45) currentQuality = 4;
-            else if (avgFPS >= 35) currentQuality = 3;
-            else if (avgFPS >= 25) currentQuality = 2;
+            // Calculate thresholds based on screen refresh rate
+            const excellent = maxRefreshRate * 0.92;  // 92% of max
+            const good = maxRefreshRate * 0.75;       // 75% of max
+            const medium = maxRefreshRate * 0.58;     // 58% of max
+            const low = maxRefreshRate * 0.42;        // 42% of max
+            
+            // Determine quality based on FPS relative to screen refresh rate
+            if (avgFPS >= excellent) currentQuality = 5;
+            else if (avgFPS >= good) currentQuality = 4;
+            else if (avgFPS >= medium) currentQuality = 3;
+            else if (avgFPS >= low) currentQuality = 2;
             else currentQuality = 1;
             
             // Update star animation when quality changes

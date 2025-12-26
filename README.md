@@ -6,6 +6,7 @@ A pixel-art New Year's countdown with canvas, fireworks and a night sky backgrou
 You have 2 methods to view the site:
 
 1. Download the files and open index.html 
+
 2. Go to https://loek.oerlemans.tv/countdown_2026
 
 ## Files
@@ -26,3 +27,4 @@ You have 2 methods to view the site:
 - Countdown digits explode into colorful fireworks when transitioning to zero.
 - Beautiful gradient night sky with twinkling stars and glowing moon.
 - Smooth animations and particle effects throughout the countdown.
+- Customizable graphics quality settings for optimal performance on different devices.
