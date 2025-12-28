@@ -3,6 +3,295 @@
 // ==========================================
 
 // ==========================================
+// SUPABASE CONFIGURATION & HIGHLIGHTS
+// ==========================================
+const SUPABASE_URL = 'https://wpszminjlmadhebonayc.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_OI2A4i1_5RIFnuXxZ3wXdQ_1UlL8Ohm';
+let supabaseClient = null;
+
+// 2025 Highlights Data
+const highlights2025 = [
+    { id: 1, emoji: '🕊️', title: '80 Years of Freedom in the Netherlands', description: 'Major celebrations across the country commemorating 80 years of liberation' },
+    { id: 2, emoji: '🌍', title: 'COP30 Climate Summit', description: 'Nations made ambitious new agreements to combat climate change in Brazil' },
+    { id: 3, emoji: '⚛️', title: 'Nuclear Fusion Breakthrough', description: 'Further advances in fusion experiments brought clean energy closer to reality' },
+    { id: 4, emoji: '🚗', title: 'Record Electric Vehicle Sales', description: 'EVs reached a record share of European car sales, accelerating the green transition' },
+    { id: 5, emoji: '💊', title: 'Cancer Treatment Breakthrough', description: 'mRNA technology led to breakthroughs in personalized cancer treatments' },
+    { id: 6, emoji: '🐝', title: 'Bee Population Recovery', description: 'Protection measures resulted in increased bee populations across Europe' },
+    { id: 7, emoji: '🔭', title: 'James Webb Telescope Discoveries', description: 'Spectacular new images and discoveries of distant galaxies and exoplanets' },
+    { id: 8, emoji: '♻️', title: 'Global Plastic Treaty Signed', description: 'Historic worldwide agreement to tackle plastic pollution' },
+    { id: 9, emoji: '🤖', title: 'AI for Good', description: 'AI helped predict natural disasters and save lives around the world' },
+    { id: 10, emoji: '💰', title: 'Record Poverty Reduction', description: 'Millions worldwide lifted out of extreme poverty' },
+    { id: 11, emoji: '🐺', title: 'Successful Rewilding Projects', description: 'Wolves, bison and other animals returned to European nature reserves' },
+    { id: 12, emoji: '⚡', title: 'International Year of Quantum', description: 'Celebrating 100 years of quantum mechanics with educational events worldwide' }
+];
+
+// Initialize Supabase and Highlights
+let userVotes = new Set(); // Track which events the user has voted for
+
+async function initSupabase() {
+    try {
+        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        await loadVotes();
+        renderHighlights();
+    } catch (error) {
+        console.error('Failed to initialize Supabase:', error);
+        renderHighlights();
+    }
+}
+
+async function loadVotes() {
+    try {
+        const { data, error } = await supabaseClient
+            .from('highlights_votes')
+            .select('event_id, votes');
+        
+        if (error) throw error;
+        
+        if (data && Array.isArray(data)) {
+            data.forEach(row => {
+                const event = highlights2025.find(h => h.id === row.event_id);
+                if (event) {
+                    event.votes = row.votes || 0;
+                }
+            });
+        }
+        
+        const savedVotes = localStorage.getItem('userVotes');
+        if (savedVotes) {
+            userVotes = new Set(JSON.parse(savedVotes));
+        }
+    } catch (error) {
+        console.error('Failed to load votes:', error);
+    }
+}
+
+async function vote(eventId) {
+    if (!supabaseClient) {
+        alert('Voting system not ready. Please refresh the page.');
+        return;
+    }
+    
+    if (userVotes.has(eventId)) {
+        await unvote(eventId);
+        return;
+    }
+    
+    try {
+        const { data: currentData, error: fetchError } = await supabaseClient
+            .from('highlights_votes')
+            .select('votes')
+            .eq('event_id', eventId)
+            .single();
+        
+        if (fetchError) throw fetchError;
+        
+        const newVoteCount = (currentData?.votes || 0) + 1;
+        
+        const { error } = await supabaseClient
+            .from('highlights_votes')
+            .update({ votes: newVoteCount, updated_at: new Date().toISOString() })
+            .eq('event_id', eventId)
+            .select();
+        
+        if (error) throw error;
+        
+        userVotes.add(eventId);
+        localStorage.setItem('userVotes', JSON.stringify([...userVotes]));
+        
+        const event = highlights2025.find(h => h.id === eventId);
+        if (event) {
+            event.votes = newVoteCount;
+        }
+        
+        renderHighlights();
+    } catch (error) {
+        console.error('Failed to vote:', error);
+        alert('Failed to save vote. Please try again.');
+    }
+}
+
+async function unvote(eventId) {
+    if (!supabaseClient) {
+        alert('Voting system not ready. Please refresh the page.'); 
+        return;
+    }
+    
+    try {
+        const { data: currentData, error: fetchError } = await supabaseClient
+            .from('highlights_votes')
+            .select('votes')
+            .eq('event_id', eventId)
+            .single();
+        
+        if (fetchError) throw fetchError;
+        
+        const newVoteCount = Math.max(0, (currentData?.votes || 0) - 1);
+        
+        const { error } = await supabaseClient
+            .from('highlights_votes')
+            .update({ votes: newVoteCount, updated_at: new Date().toISOString() })
+            .eq('event_id', eventId)
+            .select();
+        
+        if (error) throw error;
+        
+        userVotes.delete(eventId);
+        localStorage.setItem('userVotes', JSON.stringify([...userVotes]));
+        
+        const event = highlights2025.find(h => h.id === eventId);
+        if (event) {
+            event.votes = newVoteCount;
+        }
+        
+        renderHighlights();
+    } catch (error) {
+        console.error('Failed to unvote:', error);
+        alert('Failed to remove vote. Please try again.');
+    }
+}
+
+function renderHighlights() {
+    const container = document.getElementById('highlightsContainer');
+    if (!container) return;
+    
+    // Duplicate events for seamless loop
+    const allEvents = [...highlights2025, ...highlights2025];
+    
+    container.innerHTML = allEvents.map(event => {
+        const hasVoted = userVotes.has(event.id);
+        const voteCount = event.votes || 0;
+        
+        return `
+            <div class="highlight-card" data-event-id="${event.id}">
+                <div class="highlight-title">
+                    <span class="highlight-emoji">${event.emoji}</span>
+                    ${event.title}
+                </div>
+                <div class="highlight-description">${event.description}</div>
+                <div class="highlight-vote">
+                    <button class="vote-button ${hasVoted ? 'voted' : ''}" 
+                            onclick="vote(${event.id})">
+                        ${hasVoted ? '✓ Voted' : '👍 Vote'}
+                    </button>
+                    <span class="vote-count ${voteCount > 0 ? 'has-votes' : ''}">
+                        ${voteCount > 0 ? `${voteCount} ${voteCount === 1 ? 'vote' : 'votes'}` : 'No votes'}
+                    </span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Initialize highlights when page loads
+document.addEventListener('DOMContentLoaded', initSupabase);
+
+// Banner visibility state
+let bannerHidden = false;
+let lastWindowHeight = window.innerHeight;
+let lastWindowWidth = window.innerWidth;
+
+// Toggle banner visibility manually
+function toggleBanner() {
+    const banner = document.getElementById('highlightsBanner');
+    const toggleBtn = document.getElementById('bannerToggle');
+    if (!banner || !toggleBtn) return;
+    
+    bannerHidden = !bannerHidden;
+    
+    if (bannerHidden) {
+        banner.classList.add('hidden-fullscreen');
+        toggleBtn.innerHTML = '▼'; // Down arrow
+        toggleBtn.classList.add('collapsed');
+    } else {
+        banner.classList.remove('hidden-fullscreen');
+        toggleBtn.innerHTML = '▲'; // Up arrow
+        toggleBtn.classList.remove('collapsed');
+    }
+}
+
+// Check if we're in fullscreen (including F11)
+function isInFullscreen() {
+    // Check API fullscreen
+    const apiFullscreen = !!(document.fullscreenElement || 
+                             document.webkitFullscreenElement || 
+                             document.mozFullScreenElement || 
+                             document.msFullscreenElement);
+    
+    if (apiFullscreen) return true;
+    
+    // Check F11 fullscreen (window dimensions match screen)
+    const isF11 = (window.innerHeight === screen.height && 
+                   window.innerWidth === screen.width) ||
+                  (window.outerHeight === screen.height && 
+                   window.outerWidth === screen.width);
+    
+    return isF11;
+}
+
+// Unified fullscreen change handler
+function handleFullscreenChange() {
+    const banner = document.getElementById('highlightsBanner');
+    const toggleBtn = document.getElementById('bannerToggle');
+    if (!banner || !toggleBtn) return;
+    
+    const fullscreen = isInFullscreen();
+    
+    if (fullscreen) {
+        banner.classList.add('hidden-fullscreen');
+        toggleBtn.innerHTML = '▼';
+        toggleBtn.classList.add('collapsed');
+        bannerHidden = true;
+    } else {
+        banner.classList.remove('hidden-fullscreen');
+        toggleBtn.innerHTML = '▲';
+        toggleBtn.classList.remove('collapsed');
+        bannerHidden = false;
+    }
+}
+
+// Check for window resize (F11, maximize, etc)
+function handleWindowResize() {
+    const currentHeight = window.innerHeight;
+    const currentWidth = window.innerWidth;
+    
+    // Only check if dimensions changed significantly
+    if (Math.abs(currentHeight - lastWindowHeight) > 50 || 
+        Math.abs(currentWidth - lastWindowWidth) > 50) {
+        handleFullscreenChange();
+        lastWindowHeight = currentHeight;
+        lastWindowWidth = currentWidth;
+    }
+}
+
+// Listen to all fullscreen change events
+document.addEventListener('fullscreenchange', handleFullscreenChange);
+document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+// Listen to window resize for F11 detection
+window.addEventListener('resize', handleWindowResize);
+
+// Listen to F11 key specifically
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'F11') {
+        // Delay check to allow browser to process F11
+        setTimeout(handleFullscreenChange, 100);
+    }
+});
+
+// Setup toggle button
+document.addEventListener('DOMContentLoaded', () => {
+    const toggleBtn = document.getElementById('bannerToggle');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', toggleBanner);
+    }
+    
+    // Initial check
+    setTimeout(handleFullscreenChange, 500);
+});
+
+// ==========================================
 // QUALITY SYSTEM (5 levels)
 // ==========================================
 let qualityMode = 'auto'; // 'auto' or 'manual'
@@ -100,11 +389,8 @@ const ctx = canvas.getContext('2d');
 const fireworksCanvas = document.getElementById('fireworksCanvas');
 const fireworksCtx = fireworksCanvas.getContext('2d');
 
-// Supabase tracking (publishable key, safe to expose)
-const SUPABASE_URL = 'https://wpszminjlmadhebonayc.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_OI2A4i1_5RIFnuXxZ3wXdQ_1UlL8Ohm';
+// Supabase tracking variables (client already initialized above)
 const SUPABASE_TABLE = 'view_time';
-let supabaseClient = null;
 let supabaseSessionId = null;
 let supabaseViewSeconds = 0;
 let supabaseInterval = null;
@@ -1277,7 +1563,9 @@ class CountdownDisplay {
 async function initSupabaseTracking() {
     try {
         if (!window.supabase || !SUPABASE_URL || !SUPABASE_ANON_KEY) return;
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        if (!supabaseClient) {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
         await startSupabaseSession();
         if (supabaseInterval) clearInterval(supabaseInterval);
         // Update every 2 seconds for faster sync
@@ -1408,8 +1696,9 @@ async function fetchAggregateStats() {
         const timeString = formatSecondsToHMS(totalSeconds);
         if (statTimeEl) statTimeEl.textContent = timeString;
         
-        // Update mini time display in header
-        updateMiniTime();
+        // Update mini time display in header with same time
+        const miniTimeEl = document.getElementById('stat-mini-time');
+        if (miniTimeEl) miniTimeEl.textContent = timeString;
         
         if (statShotsEl) statShotsEl.textContent = totalShots;
         if (statCostEl) statCostEl.textContent = (totalShots * COST_PER_SHOT).toFixed(2);
@@ -1419,19 +1708,7 @@ async function fetchAggregateStats() {
     }
 }
 
-// Update mini time display with current local time
-function updateMiniTime() {
-    const now = new Date();
-    const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().toString().padStart(2, '0');
-    const seconds = now.getSeconds().toString().padStart(2, '0');
-    const miniTimeEl = document.getElementById('stat-mini-time');
-    if (miniTimeEl) miniTimeEl.textContent = `${hours}:${minutes}:${seconds}`;
-}
-
-// Update mini time every second
-setInterval(updateMiniTime, 1000);
-updateMiniTime();
+// Update mini time is now handled in fetchAggregateStats
 
 // Toggle stats panel collapsed/expanded
 if (statsToggleBtn && statsPanel) {
