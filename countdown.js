@@ -3,6 +3,109 @@
 // ==========================================
 
 // ==========================================
+// LANGUAGE SYSTEM
+// ==========================================
+let currentLanguage = 'en';
+const translations = {
+    en: {
+        title: 'Countdown to 2026',
+        days: 'Days',
+        hours: 'Hours',
+        minutes: 'Minutes',
+        seconds: 'Seconds',
+        happyNewYear: '🎉 HAPPY NEW YEAR 🎉',
+        stats: 'Stats',
+        timeWatched: 'Time watched:',
+        fireworksFired: 'Fireworks fired:',
+        estCost: 'Est. cost:',
+        visitors: 'Visitors:',
+        qualitySettings: 'Quality Settings',
+        auto: 'Auto',
+        manual: 'Manual',
+        currentLevel: 'Current: Level',
+        voted: '✓ Voted',
+        vote: '👍 Vote',
+        noVotes: 'No votes',
+        voteSingular: 'vote',
+        votesPlural: 'votes'
+    },
+    nl: {
+        title: 'Aftellen naar 2026',
+        days: 'Dagen',
+        hours: 'Uren',
+        minutes: 'Minuten',
+        seconds: 'Seconden',
+        happyNewYear: '🎉 GELUKKIG NIEUWJAAR 🎉',
+        stats: 'Stats',
+        timeWatched: 'Gekeken:',
+        fireworksFired: 'Vuurwerk:',
+        estCost: 'Geschatte kosten:',
+        visitors: 'Bezoekers:',
+        qualitySettings: 'Kwaliteit Instellingen',
+        auto: 'Automatisch',
+        manual: 'Handmatig',
+        currentLevel: 'Huidig: Level',
+        voted: '✓ Gestemd',
+        vote: '👍 Stem',
+        noVotes: 'Geen stemmen',
+        voteSingular: 'stem',
+        votesPlural: 'stemmen'
+    }
+};
+
+// Track which keys are pressed
+let keysPressed = {};
+
+// Language toggle
+document.addEventListener('keydown', (e) => {
+    keysPressed[e.key.toLowerCase()] = true;
+    
+    // Check if N and L are both pressed
+    if (keysPressed['n'] && keysPressed['l']) {
+        currentLanguage = currentLanguage === 'en' ? 'nl' : 'en';
+        updateLanguage();
+    }
+});
+
+document.addEventListener('keyup', (e) => {
+    keysPressed[e.key.toLowerCase()] = false;
+});
+
+function updateLanguage() {
+    const t = translations[currentLanguage];
+    
+    // Update title
+    const titleEl = document.querySelector('.title');
+    if (titleEl) titleEl.textContent = t.title;
+    
+    // Update labels
+    const labelDays = document.getElementById('label-days');
+    const labelHours = document.getElementById('label-hours');
+    const labelMinutes = document.getElementById('label-minutes');
+    const labelSeconds = document.getElementById('label-seconds');
+    
+    if (labelDays) labelDays.textContent = t.days;
+    if (labelHours) labelHours.textContent = t.hours;
+    if (labelMinutes) labelMinutes.textContent = t.minutes;
+    if (labelSeconds) labelSeconds.textContent = t.seconds;
+    
+    // Update stats
+    const statsToggle = document.getElementById('statsToggle');
+    if (statsToggle) statsToggle.textContent = t.stats;
+    
+    // Update happy new year message
+    const happyNewYearEl = document.querySelector('.happy-new-year h1');
+    if (happyNewYearEl) {
+        const yearSpan = happyNewYearEl.querySelector('.year');
+        const yearText = yearSpan ? yearSpan.outerHTML : '';
+        happyNewYearEl.innerHTML = t.happyNewYear + yearText;
+    }
+    
+    // Update highlights banners
+    renderHighlights();
+}
+
+// ==========================================
 // SUPABASE CONFIGURATION & HIGHLIGHTS
 // ==========================================
 const SUPABASE_URL = 'https://wpszminjlmadhebonayc.supabase.co';
@@ -11,18 +114,78 @@ let supabaseClient = null;
 
 // 2025 Highlights Data
 const highlights2025 = [
-    { id: 1, emoji: '🕊️', title: '80 Years of Freedom in the Netherlands', description: 'Major celebrations across the country commemorating 80 years of liberation' },
-    { id: 2, emoji: '🌍', title: 'COP30 Climate Summit', description: 'Nations made ambitious new agreements to combat climate change in Brazil' },
-    { id: 3, emoji: '⚛️', title: 'Nuclear Fusion Breakthrough', description: 'Further advances in fusion experiments brought clean energy closer to reality' },
-    { id: 4, emoji: '🚗', title: 'Record Electric Vehicle Sales', description: 'EVs reached a record share of European car sales, accelerating the green transition' },
-    { id: 5, emoji: '💊', title: 'Cancer Treatment Breakthrough', description: 'mRNA technology led to breakthroughs in personalized cancer treatments' },
-    { id: 6, emoji: '🐝', title: 'Bee Population Recovery', description: 'Protection measures resulted in increased bee populations across Europe' },
-    { id: 7, emoji: '🔭', title: 'James Webb Telescope Discoveries', description: 'Spectacular new images and discoveries of distant galaxies and exoplanets' },
-    { id: 8, emoji: '♻️', title: 'Global Plastic Treaty Signed', description: 'Historic worldwide agreement to tackle plastic pollution' },
-    { id: 9, emoji: '🤖', title: 'AI for Good', description: 'AI helped predict natural disasters and save lives around the world' },
-    { id: 10, emoji: '💰', title: 'Record Poverty Reduction', description: 'Millions worldwide lifted out of extreme poverty' },
-    { id: 11, emoji: '🐺', title: 'Successful Rewilding Projects', description: 'Wolves, bison and other animals returned to European nature reserves' },
-    { id: 12, emoji: '⚡', title: 'International Year of Quantum', description: 'Celebrating 100 years of quantum mechanics with educational events worldwide' }
+    { 
+        id: 1, 
+        emoji: '🕊️', 
+        title: { en: '80 Years of Freedom in the Netherlands', nl: '80 Jaar Vrijheid in Nederland' },
+        description: { en: 'Major celebrations across the country commemorating 80 years of liberation', nl: 'Grote vieringen door het hele land ter herdenking van 80 jaar bevrijding' }
+    },
+    { 
+        id: 2, 
+        emoji: '🌍', 
+        title: { en: 'COP30 Climate Summit', nl: 'COP30 Klimaattop' },
+        description: { en: 'Nations made ambitious new agreements to combat climate change in Brazil', nl: 'Landen maakten ambitieuze nieuwe afspraken om klimaatverandering te bestrijden in Brazilië' }
+    },
+    { 
+        id: 3, 
+        emoji: '⚛️', 
+        title: { en: 'Nuclear Fusion Breakthrough', nl: 'Kernfusie Doorbraak' },
+        description: { en: 'Further advances in fusion experiments brought clean energy closer to reality', nl: 'Verdere vooruitgang in fusie-experimenten bracht schone energie dichter bij de realiteit' }
+    },
+    { 
+        id: 4, 
+        emoji: '🚗', 
+        title: { en: 'Record Electric Vehicle Sales', nl: 'Record Elektrische Auto Verkoop' },
+        description: { en: 'EVs reached a record share of European car sales, accelerating the green transition', nl: 'EV\'s bereikten een recordaandeel in Europese autoverkoop, versnellend de groene transitie' }
+    },
+    { 
+        id: 5, 
+        emoji: '💊', 
+        title: { en: 'Cancer Treatment Breakthrough', nl: 'Kankerbehandeling Doorbraak' },
+        description: { en: 'mRNA technology led to breakthroughs in personalized cancer treatments', nl: 'mRNA technologie leidde tot doorbraken in gepersonaliseerde kankerbehandelingen' }
+    },
+    { 
+        id: 6, 
+        emoji: '🐝', 
+        title: { en: 'Bee Population Recovery', nl: 'Bij Populatie Herstel' },
+        description: { en: 'Protection measures resulted in increased bee populations across Europe', nl: 'Beschermingsmaatregelen resulteerden in toegenomen bijenpopulaties in Europa' }
+    },
+    { 
+        id: 7, 
+        emoji: '🔭', 
+        title: { en: 'James Webb Telescope Discoveries', nl: 'James Webb Telescoop Ontdekkingen' },
+        description: { en: 'Spectacular new images and discoveries of distant galaxies and exoplanets', nl: 'Spectaculaire nieuwe beelden en ontdekkingen van verre sterrenstelsels en exoplaneten' }
+    },
+    { 
+        id: 8, 
+        emoji: '♻️', 
+        title: { en: 'Global Plastic Treaty Signed', nl: 'Wereldwijd Plastic Verdrag Ondertekend' },
+        description: { en: 'Historic worldwide agreement to tackle plastic pollution', nl: 'Historische wereldwijde overeenkomst om plasticvervuiling aan te pakken' }
+    },
+    { 
+        id: 9, 
+        emoji: '🤖', 
+        title: { en: 'AI for Good', nl: 'AI voor het Goede' },
+        description: { en: 'AI helped predict natural disasters and save lives around the world', nl: 'AI hielp natuurrampen te voorspellen en levens te redden over de hele wereld' }
+    },
+    { 
+        id: 10, 
+        emoji: '💰', 
+        title: { en: 'Record Poverty Reduction', nl: 'Record Armoede Verlaging' },
+        description: { en: 'Millions worldwide lifted out of extreme poverty', nl: 'Miljoenen wereldwijd uit extreme armoede getild' }
+    },
+    { 
+        id: 11, 
+        emoji: '🐺', 
+        title: { en: 'Successful Rewilding Projects', nl: 'Succesvolle Herwilderingsprojecten' },
+        description: { en: 'Wolves, bison and other animals returned to European nature reserves', nl: 'Wolven, bizons en andere dieren teruggekeerd naar Europese natuurreservaten' }
+    },
+    { 
+        id: 12, 
+        emoji: '⚡', 
+        title: { en: 'International Year of Quantum', nl: 'Internationaal Jaar van Quantum' },
+        description: { en: 'Celebrating 100 years of quantum mechanics with educational events worldwide', nl: 'Viering van 100 jaar kwantummechanica met educatieve evenementen wereldwijd' }
+    }
 ];
 
 // Initialize Supabase and Highlights
@@ -160,21 +323,24 @@ function renderHighlights() {
     container.innerHTML = allEvents.map(event => {
         const hasVoted = userVotes.has(event.id);
         const voteCount = event.votes || 0;
+        const title = typeof event.title === 'object' ? event.title[currentLanguage] : event.title;
+        const description = typeof event.description === 'object' ? event.description[currentLanguage] : event.description;
+        const t = translations[currentLanguage];
         
         return `
             <div class="highlight-card" data-event-id="${event.id}">
                 <div class="highlight-title">
                     <span class="highlight-emoji">${event.emoji}</span>
-                    ${event.title}
+                    ${title}
                 </div>
-                <div class="highlight-description">${event.description}</div>
+                <div class="highlight-description">${description}</div>
                 <div class="highlight-vote">
                     <button class="vote-button ${hasVoted ? 'voted' : ''}" 
                             onclick="vote(${event.id})">
-                        ${hasVoted ? '✓ Voted' : '👍 Vote'}
+                        ${hasVoted ? t.voted : t.vote}
                     </button>
                     <span class="vote-count ${voteCount > 0 ? 'has-votes' : ''}">
-                        ${voteCount > 0 ? `${voteCount} ${voteCount === 1 ? 'vote' : 'votes'}` : 'No votes'}
+                        ${voteCount > 0 ? `${voteCount} ${voteCount === 1 ? t.voteSingular : t.votesPlural}` : t.noVotes}
                     </span>
                 </div>
             </div>
@@ -189,6 +355,7 @@ document.addEventListener('DOMContentLoaded', initSupabase);
 let bannerHidden = false;
 let lastWindowHeight = window.innerHeight;
 let lastWindowWidth = window.innerWidth;
+let pageLoadTime = Date.now();
 
 // Toggle banner visibility manually
 function toggleBanner() {
@@ -201,11 +368,11 @@ function toggleBanner() {
     if (bannerHidden) {
         banner.classList.add('hidden-fullscreen');
         toggleBtn.innerHTML = '▼'; // Down arrow
-        toggleBtn.classList.add('collapsed');
+        toggleBtn.title = "Show banner";
     } else {
         banner.classList.remove('hidden-fullscreen');
         toggleBtn.innerHTML = '▲'; // Up arrow
-        toggleBtn.classList.remove('collapsed');
+        toggleBtn.title = "Hide banner";
     }
 }
 
@@ -239,18 +406,25 @@ function handleFullscreenChange() {
     if (fullscreen) {
         banner.classList.add('hidden-fullscreen');
         toggleBtn.innerHTML = '▼';
-        toggleBtn.classList.add('collapsed');
+        toggleBtn.title = "Show banner";
         bannerHidden = true;
     } else {
+        // Only auto-show if it wasn't manually hidden before? 
+        // For now, let's reset to shown when exiting fullscreen
         banner.classList.remove('hidden-fullscreen');
         toggleBtn.innerHTML = '▲';
-        toggleBtn.classList.remove('collapsed');
+        toggleBtn.title = "Hide banner";
         bannerHidden = false;
     }
 }
 
 // Check for window resize (F11, maximize, etc)
 function handleWindowResize() {
+    // Don't hide banner in first 3 seconds after page load
+    if (Date.now() - pageLoadTime < 3000) {
+        return;
+    }
+    
     const currentHeight = window.innerHeight;
     const currentWidth = window.innerWidth;
     
@@ -305,6 +479,11 @@ let fpsStartTime = performance.now();
 let currentFPS = 60;
 let maxRefreshRate = 60; // Default to 60Hz
 
+// Continuous FPS averaging
+let totalFPS = 0;
+let fpsSampleCount = 0;
+let averageFPS = 60;
+
 // Detect screen refresh rate
 function detectRefreshRate() {
     let lastTime = performance.now();
@@ -343,6 +522,12 @@ function updateFPS(timestamp) {
     const elapsed = timestamp - fpsStartTime;
     if (elapsed >= 1000) {
         currentFPS = Math.round((frameCount * 1000) / elapsed);
+        
+        // Update continuous average
+        totalFPS += currentFPS;
+        fpsSampleCount++;
+        averageFPS = totalFPS / fpsSampleCount;
+        
         frameCount = 0;
         fpsStartTime = timestamp;
     }
@@ -350,11 +535,9 @@ function updateFPS(timestamp) {
 
 function checkQualityAdjustment(timestamp) {
     if (timestamp - lastFpsCheck >= 5000) {
-        fpsHistory.push(currentFPS);
-        if (fpsHistory.length > 6) fpsHistory.shift();
-        
-        if (qualityMode === 'auto' && fpsHistory.length >= 2) {
-            const avgFPS = fpsHistory.reduce((a, b) => a + b, 0) / fpsHistory.length;
+        // Use continuous average FPS instead of history array
+        if (qualityMode === 'auto' && fpsSampleCount >= 5) { // Wait for at least 5 samples
+            const avgFPS = averageFPS;
             
             // Calculate thresholds based on screen refresh rate
             const excellent = maxRefreshRate * 0.92;  // 92% of max
@@ -1781,7 +1964,7 @@ function updateQualityDisplay() {
     if (currentQualityEl) currentQualityEl.textContent = currentQuality;
     
     const currentFpsEl = document.getElementById('current-fps');
-    if (currentFpsEl) currentFpsEl.textContent = currentFPS;
+    if (currentFpsEl) currentFpsEl.textContent = Math.round(averageFPS);
 }
 
 // Update every second instead of 100ms
