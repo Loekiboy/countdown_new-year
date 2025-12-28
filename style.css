@@ -374,6 +374,33 @@ body.stars-static::after {
     font-size: 11px;
 }
 
+.credits-section {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.credits-header {
+    font-weight: bold;
+    font-size: 12px;
+    margin-bottom: 4px;
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.credits-content {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.credits-content a {
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: underline;
+}
+
+.credits-content a:hover {
+    color: #fff;
+}
+
 .stats-mini-time {
     font-family: monospace;
     color: rgba(255, 255, 255, 0.8);

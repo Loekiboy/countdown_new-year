@@ -679,6 +679,111 @@ class FireworkParticle {
 }
 
 // ==========================================
+// AMBULANCE CLASS 
+// ==========================================
+// Preload ambulance image
+const ambulanceImage = new Image();
+ambulanceImage.src = 'images/ambulance.png';
+let ambulanceImageLoaded = false;
+ambulanceImage.onload = () => {
+    ambulanceImageLoaded = true;
+    console.log('Ambulance image loaded!');
+};
+ambulanceImage.onerror = () => {
+    console.error('Failed to load ambulance image!');
+};
+
+class Ambulance {
+    static lastFromLeft = true; // Static variable to alternate direction
+
+    constructor() {
+        // Alternate between left and right
+        const fromLeft = !Ambulance.lastFromLeft;
+        Ambulance.lastFromLeft = fromLeft;
+        
+        if (fromLeft) {
+            this.x = -100; // Start off-screen left
+            this.speed = 3 + Math.random() * 2; // Speed to the right
+        } else {
+            this.x = window.innerWidth + 100; // Start off-screen right
+            this.speed = -(3 + Math.random() * 2); // Speed to the left (negative)
+        }
+        
+        this.y = window.innerHeight - 80; // Bottom of screen
+        this.size = 80; // Size of ambulance
+        this.lightTimer = 0;
+        this.lightState = 0; // 0: red, 1: blue
+    }
+
+    update(dt = 1) {
+        this.x += this.speed * dt;
+        this.lightTimer += dt;
+        if (this.lightTimer > 6) { // Flash every 6 frames
+            this.lightTimer = 0;
+            this.lightState = 1 - this.lightState;
+        }
+    }
+
+    draw(ctx) {
+        if (!ambulanceImageLoaded) return;
+        
+        ctx.save();
+        
+        // Calculate dimensions
+        const width = this.size;
+        const height = (ambulanceImage.height / ambulanceImage.width) * this.size;
+        const drawY = this.y - height;
+        
+        // Draw ambulance image
+        ctx.drawImage(ambulanceImage, this.x, drawY, width, height);
+        
+        // Draw flashing lights
+        const lightRadius = 6;
+        
+        // Left light
+        const leftLightX = this.x + width * 0.35;
+        const leftLightY = drawY + height * 0.15 + 2;
+        const leftColor = this.lightState === 0 ? 'rgba(255, 0, 0, 0.9)' : 'rgba(0, 100, 255, 0.9)';
+        
+        // Right light
+        const rightLightX = this.x + width * 0.65 - 4;
+        const rightLightY = drawY + height * 0.15 + 2;
+        const rightColor = this.lightState === 1 ? 'rgba(255, 0, 0, 0.9)' : 'rgba(0, 100, 255, 0.9)';
+        
+        // Draw glow for left light
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = leftColor;
+        ctx.fillStyle = leftColor;
+        ctx.beginPath();
+        ctx.arc(leftLightX, leftLightY, lightRadius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw glow for right light
+        ctx.shadowColor = rightColor;
+        ctx.fillStyle = rightColor;
+        ctx.beginPath();
+        ctx.arc(rightLightX, rightLightY, lightRadius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw bright centers
+        ctx.shadowBlur = 30;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.beginPath();
+        ctx.arc(leftLightX, leftLightY, lightRadius * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(rightLightX, rightLightY, lightRadius * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.restore();
+    }
+
+    isAlive() {
+        return this.x < window.innerWidth + 150;
+    }
+}
+
+// ==========================================
 // MAIN COUNTDOWN CLASS
 // ==========================================
 class CountdownDisplay {
@@ -687,6 +792,7 @@ class CountdownDisplay {
         this.explodingPixels = [];
         this.fireworks = [];
         this.rockets = [];
+        this.ambulances = [];
         this.currentTimeString = '';
         this.colorSchemeIndex = 0;
         this.lastSecond = -1;
@@ -1009,6 +1115,19 @@ class CountdownDisplay {
                 this.rockets.splice(i, 1);
             }
         }
+
+        // Update ambulances
+        for (let i = this.ambulances.length - 1; i >= 0; i--) {
+            this.ambulances[i].update(dt);
+            if (!this.ambulances[i].isAlive()) {
+                this.ambulances.splice(i, 1);
+            }
+        }
+
+        // Occasionally spawn ambulance
+        if (this.ambulances.length === 0 && Math.random() < 0.005 * dt) { // Every ~2.5 seconds
+            this.addAmbulance();
+        }
     }
 
     explodePixelsAtPositions(positions) {
@@ -1074,6 +1193,12 @@ class CountdownDisplay {
         const targetY = 50 + Math.random() * (fireworksCanvas.height * 0.4);
         const color = this.getRandomColor();
         this.rockets.push(new FireworkRocket(x, targetY, color));
+    }
+
+    addAmbulance() {
+        // Add an ambulance at the bottom of the screen
+        this.ambulances.push(new Ambulance());
+        console.log('Ambulance spawned!');
     }
 
     createMassiveFireworks() {
@@ -1143,6 +1268,11 @@ class CountdownDisplay {
         // Draw rockets
         for (let i = 0; i < this.rockets.length; i++) {
             this.rockets[i].draw(fireworksCtx);
+        }
+
+        // Draw ambulances on fireworks canvas (fullscreen)
+        for (let i = 0; i < this.ambulances.length; i++) {
+            this.ambulances[i].draw(fireworksCtx);
         }
         
         // Reset composite operation
