@@ -313,12 +313,49 @@ async function unvote(eventId) {
     }
 }
 
+// Banner scrolling logic
+let scrollInterval;
+let isScrolling = true;
+let scrollSpeed = 1; // Pixels per frame
+
+function startBannerScroll() {
+    const wrapper = document.querySelector('.banner-content-wrapper');
+    if (!wrapper) return;
+
+    // Clear existing loop if any
+    if (scrollInterval) cancelAnimationFrame(scrollInterval);
+
+    function scrollLoop() {
+        if (isScrolling && wrapper.scrollWidth > 0) {
+            wrapper.scrollLeft += scrollSpeed;
+            
+            // Seamless loop: if we've scrolled past half the content (the original set), reset to 0
+            // We use a small buffer to ensure it's smooth
+            if (wrapper.scrollLeft >= (wrapper.scrollWidth / 2)) {
+                wrapper.scrollLeft = 0;
+            }
+        }
+        scrollInterval = requestAnimationFrame(scrollLoop);
+    }
+    
+    scrollInterval = requestAnimationFrame(scrollLoop);
+
+    // Pause on interaction
+    wrapper.addEventListener('mouseenter', () => isScrolling = false);
+    wrapper.addEventListener('mouseleave', () => isScrolling = true);
+    wrapper.addEventListener('touchstart', () => isScrolling = false, { passive: true });
+    wrapper.addEventListener('touchend', () => {
+        // Resume after a short delay to allow fling to finish
+        setTimeout(() => isScrolling = true, 2000);
+    }, { passive: true });
+}
+
 function renderHighlights() {
     const container = document.getElementById('highlightsContainer');
     if (!container) return;
     
-    // Duplicate events for seamless loop
-    const allEvents = [...highlights2025, ...highlights2025];
+    // Duplicate events for seamless loop (TRIPLE to be safe for wide screens)
+    const allEvents = [...highlights2025, ...highlights2025, ...highlights2025];
     
     container.innerHTML = allEvents.map(event => {
         const hasVoted = userVotes.has(event.id);
@@ -346,6 +383,9 @@ function renderHighlights() {
             </div>
         `;
     }).join('');
+
+    // Start scrolling after render
+    startBannerScroll();
 }
 
 // Initialize highlights when page loads
