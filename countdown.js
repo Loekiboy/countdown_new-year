@@ -694,22 +694,11 @@ ambulanceImage.onerror = () => {
 };
 
 class Ambulance {
-    static lastFromLeft = true; // Static variable to alternate direction
-
     constructor() {
-        // Alternate between left and right
-        const fromLeft = !Ambulance.lastFromLeft;
-        Ambulance.lastFromLeft = fromLeft;
-        
-        if (fromLeft) {
-            this.x = -100; // Start off-screen left
-            this.speed = 3 + Math.random() * 2; // Speed to the right
-        } else {
-            this.x = window.innerWidth + 100; // Start off-screen right
-            this.speed = -(3 + Math.random() * 2); // Speed to the left (negative)
-        }
-        
-        this.y = window.innerHeight - 80; // Bottom of screen
+        this.x = -window.innerWidth; // Start in center of screen
+        this.y = window.innerHeight + 25; // Middle of screen
+        console.log('window innerHeight:', window.innerHeight);
+        this.speed = 3 + Math.random() * 2; // Speed
         this.size = 80; // Size of ambulance
         this.lightTimer = 0;
         this.lightState = 0; // 0: red, 1: blue
