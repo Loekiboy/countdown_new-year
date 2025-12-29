@@ -239,6 +239,12 @@ async function vote(eventId) {
         return;
     }
     
+    // Enforce single vote: unvote any previously voted event
+    if (userVotes.size > 0) {
+        const previousEventId = [...userVotes][0];
+        await unvote(previousEventId);
+    }
+    
     try {
         const { data: currentData, error: fetchError } = await supabaseClient
             .from('highlights_votes')
