@@ -6,6 +6,8 @@
 // LANGUAGE SYSTEM
 // ==========================================
 let currentLanguage = 'en';
+let targetYear = null;
+let currentYearMode = false;
 const translations = {
     en: {
         title: 'Countdown to 2026',
@@ -13,7 +15,9 @@ const translations = {
         hours: 'Hours',
         minutes: 'Minutes',
         seconds: 'Seconds',
-        happyNewYear: '🎉 HAPPY NEW YEAR 🎉',
+        happyNewYear: 'HAPPY NEW YEAR',
+        currentYearPrefix: 'it is',
+        countdownButton: 'Countdown',
         stats: 'Stats',
         timeWatched: 'Time watched:',
         fireworksFired: 'Fireworks fired:',
@@ -35,13 +39,15 @@ const translations = {
         hours: 'Uren',
         minutes: 'Minuten',
         seconds: 'Seconden',
-        happyNewYear: '🎉 GELUKKIG NIEUWJAAR 🎉',
+        happyNewYear: 'HAPPY NEW YEAR',
+        currentYearPrefix: 'het is',
+        countdownButton: 'Aftellen',
         stats: 'Stats',
         timeWatched: 'Gekeken:',
         fireworksFired: 'Vuurwerk:',
         estCost: 'Geschatte kosten:',
         visitors: 'Bezoekers:',
-        qualitySettings: 'Kwaliteit Instellingen',
+        qualitySettings: 'Kwaliteit Instellingen', 
         auto: 'Automatisch',
         manual: 'Handmatig',
         currentLevel: 'Huidig: Level',
@@ -70,6 +76,59 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('keyup', (e) => {
     keysPressed[e.key.toLowerCase()] = false;
 });
+
+function getCurrentYear() {
+    return new Date().getFullYear();
+}
+
+function getNextYear() {
+    return getCurrentYear() + 1;
+}
+
+function setCurrentYearMode(enabled) {
+    currentYearMode = enabled;
+
+    const currentYearMessage = document.getElementById('currentYearMessage');
+    const currentYearText = document.getElementById('currentYearText');
+    const btn2027 = document.getElementById('btn-2027');
+    const titleEl = document.querySelector('.title');
+    const labels = document.getElementById('labels');
+    const countdownCanvas = document.getElementById('countdownCanvas');
+    const happyNewYear = document.getElementById('happyNewYear');
+
+    if (enabled) {
+        const year = getCurrentYear();
+        translations.en.title = `it is ${year}`;
+        translations.nl.title = `het is ${year}`;
+
+        if (currentYearMessage) currentYearMessage.style.display = 'flex';
+        if (currentYearText) currentYearText.textContent = `${translations[currentLanguage].currentYearPrefix} ${year}`;
+        if (btn2027) btn2027.textContent = `${translations[currentLanguage].countdownButton} ${getNextYear()}`;
+        if (titleEl) titleEl.style.display = 'none';
+        if (labels) labels.style.display = 'none';
+        if (countdownCanvas) countdownCanvas.style.display = '';
+        if (happyNewYear) happyNewYear.style.display = 'none';
+    } else {
+        if (currentYearMessage) currentYearMessage.style.display = 'none';
+        if (titleEl) titleEl.style.display = '';
+        if (labels) labels.style.display = '';
+        if (countdownCanvas) countdownCanvas.style.display = '';
+    }
+}
+
+function startCountdownToYear(year) {
+    targetYear = year;
+    translations.en.title = `Countdown to ${year}`;
+    translations.nl.title = `Aftellen naar ${year}`;
+
+    setCurrentYearMode(false);
+    updateLanguage();
+
+    if (typeof countdown !== 'undefined') {
+        countdown.calculateSizes();
+        countdown.currentTimeString = '';
+    }
+}
 
 function updateLanguage() {
     const t = translations[currentLanguage];
@@ -100,6 +159,13 @@ function updateLanguage() {
         const yearText = yearSpan ? yearSpan.outerHTML : '';
         happyNewYearEl.innerHTML = t.happyNewYear + yearText;
     }
+
+    // Update current year banner and button
+    const currentYearText = document.getElementById('currentYearText');
+    if (currentYearText) currentYearText.textContent = `${t.currentYearPrefix} ${getCurrentYear()}`;
+
+    const btn2027 = document.getElementById('btn-2027');
+    if (btn2027) btn2027.textContent = `${t.countdownButton} ${getNextYear()}`;
     
     // Update highlights banners
     renderHighlights();
@@ -643,6 +709,9 @@ function resizeCanvas() {
     // Force recalculation of pixel sizes when resizing
     if (window.countdown) {
         countdown.calculateSizes();
+        if (currentYearMode) {
+            countdown.currentTimeString = '';
+        }
     }
 }
 resizeCanvas();
@@ -652,6 +721,15 @@ window.addEventListener('resize', resizeCanvas);
 // PIXEL ART CIJFER DEFINITIES (5x7 grid)
 // ==========================================
 const DIGIT_PATTERNS = {
+    ' ': [
+        [0,0,0,0,0],
+        [0,0,0,0,0],
+        [0,0,0,0,0],
+        [0,0,0,0,0],
+        [0,0,0,0,0],
+        [0,0,0,0,0],
+        [0,0,0,0,0]
+    ],
     '0': [
         [0,1,1,1,0],
         [1,0,0,0,1],
@@ -750,6 +828,42 @@ const DIGIT_PATTERNS = {
         [0,0,1,0,0],
         [0,0,1,0,0],
         [0,0,0,0,0]
+    ],
+    'I': [
+        [1,1,1,1,1],
+        [0,0,1,0,0],
+        [0,0,1,0,0],
+        [0,0,1,0,0],
+        [0,0,1,0,0],
+        [0,0,1,0,0],
+        [1,1,1,1,1]
+    ],
+    'T': [
+        [1,1,1,1,1],
+        [0,0,1,0,0],
+        [0,0,1,0,0],
+        [0,0,1,0,0],
+        [0,0,1,0,0],
+        [0,0,1,0,0],
+        [0,0,1,0,0]
+    ],
+    'S': [
+        [0,1,1,1,1],
+        [1,0,0,0,0],
+        [1,0,0,0,0],
+        [0,1,1,1,0],
+        [0,0,0,0,1],
+        [0,0,0,0,1],
+        [1,1,1,1,0]
+    ],
+    '!': [
+        [0,0,1,0,0],
+        [0,0,1,0,0],
+        [0,0,1,0,0],
+        [0,0,1,0,0],
+        [0,0,1,0,0],
+        [0,0,0,0,0],
+        [0,0,1,0,0]
     ]
 };
 
@@ -1297,6 +1411,7 @@ class CountdownDisplay {
         this.fireworks = [];
         this.rockets = [];
         this.ambulances = [];
+        this.isCelebrating = false;
         this.currentTimeString = '';
         this.colorSchemeIndex = 0;
         this.lastSecond = -1;
@@ -1323,6 +1438,14 @@ class CountdownDisplay {
         
         // Calculate width based on displayMode
         let numChars = 11; // DD:HH:MM:SS
+        
+        // Check if days > 99 to adjust width calculation
+        const timeToCheck = this.getTimeUntilNewYear();
+        if (!timeToCheck.isNewYear) {
+            if (timeToCheck.days > 99) numChars = 12;
+            if (timeToCheck.days > 999) numChars = 13;
+        }
+
         if (this.displayMode === 'no-days') numChars = 8; // HH:MM:SS
         else if (this.displayMode === 'no-hours') numChars = 5; // MM:SS
         else if (this.displayMode === 'only-seconds') numChars = 2; // SS
@@ -1338,7 +1461,17 @@ class CountdownDisplay {
         
         // Mobile gets more aggressive scaling
         const baseWidth = isMobile ? (availableWidth - 10) : (availableWidth - 55);
-        const basePixelSize = Math.floor(baseWidth / 81);
+        
+        // Calculate total units of width needed
+        // Each char is 5 pixels wide + 1 spacing = 6 units
+        // Digit spacing is approx 2 units
+        // Section spacing is approx 4 units
+        // 11 chars: 11 * 6 + 7 * 2 + 3 * 4 = 66 + 14 + 12 = 92 units approx
+        // Let's use a more dynamic divisor based on numChars
+        const unitsPerChar = 7.5; // Average units per char including spacing
+        const divisor = numChars * unitsPerChar;
+        
+        const basePixelSize = Math.floor(baseWidth / divisor);
         const maxPixelByWidth = Math.max(isMobile ? 1 : 6, basePixelSize * scaleFactor);
         
         this.pixelSize = Math.floor(Math.min(maxPixelByWidth, maxPixelByHeight * scaleFactor));
@@ -1352,10 +1485,30 @@ class CountdownDisplay {
 
     getTimeUntilNewYear() {
         const now = new Date();
-        const newYear = new Date(now.getFullYear() + 1, 0, 1, 0, 0, 0);
+        // If no target year is set, show the current-year banner
+        if (!targetYear) {
+            const currentYear = now.getFullYear();
+            const currentYearStart = new Date(currentYear, 0, 1, 0, 0, 0);
+            if (now >= currentYearStart) {
+                return {
+                    days: 0,
+                    hours: 0,
+                    minutes: 0,
+                    seconds: 0,
+                    isNewYear: false,
+                    isCurrentYear: true,
+                    currentYear
+                };
+            }
+        }
+
+        // If targetYear is set (e.g. 2027), use that.
+        const year = targetYear || now.getFullYear();
+        const newYear = new Date(year, 0, 1, 0, 0, 0);
         
+        // If we are past Jan 1st of the target year, it's New Year!
         if (now >= newYear) {
-            return { days: 0, hours: 0, minutes: 0, seconds: 0, isNewYear: true };
+            return { days: 0, hours: 0, minutes: 0, seconds: 0, isNewYear: true, isCurrentYear: false };
         }
 
         const diff = newYear - now;
@@ -1365,7 +1518,7 @@ class CountdownDisplay {
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-        return { days, hours, minutes, seconds, isNewYear: false };
+        return { days, hours, minutes, seconds, isNewYear: false, isCurrentYear: false };
     }
 
     formatTime(time) {
@@ -1510,18 +1663,123 @@ class CountdownDisplay {
 
     update(dt = 1) {
         const time = this.getTimeUntilNewYear();
+
+        if (time.isCurrentYear) {
+            setCurrentYearMode(true);
+            const newTimeString = `IT IS ${time.currentYear}!`;
+
+            this.displayMode = 'full';
+
+            if (newTimeString !== this.currentTimeString) {
+                this.explodingPixels = [];
+                this.fireworks = [];
+                this.rockets = [];
+
+                const isMobile = window.innerWidth < 768;
+                const availableWidth = canvas.width - (isMobile ? 6 : 40);
+                const unitsPerChar = 7.5;
+                const divisor = newTimeString.length * unitsPerChar;
+                const basePixelSize = Math.floor(availableWidth / divisor);
+                this.pixelSize = Math.max(isMobile ? 1 : 4, Math.min(35, basePixelSize));
+                this.digitSpacing = this.pixelSize * (isMobile ? 1.2 : 2);
+                this.sectionSpacing = this.pixelSize * (isMobile ? 2.5 : 4);
+
+                const allNewPixels = this.createPixelsForString(newTimeString);
+                this.pixels = allNewPixels;
+                this.currentTimeString = newTimeString;
+            }
+
+            for (let i = 0; i < this.pixels.length; i++) {
+                this.pixels[i].update(dt);
+                if (this.pixels[i].isSlowColor && this.pixels[i].state === 'stable') {
+                    this.pixels[i].color = getSlowChangingColorWithVariance();
+                }
+            }
+
+            return;
+        } else if (currentYearMode) {
+            setCurrentYearMode(false);
+        }
         
         if (time.isNewYear) {
-            document.getElementById('happyNewYear').style.display = 'block';
+            // Hide HTML overlay
+            document.getElementById('happyNewYear').style.display = 'none';
+            
+            // Use pixel art for HAPPY NEW YEAR
+            const newTimeString = "HAPPY NEW YEAR";
+            
+            // Force display mode to full to ensure enough space/scaling logic works reasonably
+            // or we might need custom scaling for this long string
+            this.displayMode = 'full'; 
+            
+            // Recalculate sizes if we just switched to New Year mode
+            if (this.currentTimeString !== newTimeString) {
+                // Custom scaling for "HAPPY NEW YEAR" (14 chars)
+                // We can reuse calculateSizes logic but we need to trick it or override it
+                // Let's just let the normal logic handle it but we need to ensure it fits
+                // 14 chars is longer than the usual max of 13.
+                
+                // Temporarily override calculateSizes for this frame? 
+                // Or just let the loop below handle the string change
+            }
+
+            if (newTimeString !== this.currentTimeString) {
+                // Clear existing pixels for a clean transition or explode them
+                this.explodePixelsAtPositions([...Array(Math.max(this.currentTimeString.length, newTimeString.length)).keys()]);
+                
+                // Recalculate sizes for the long string
+                // We need to manually adjust pixel size because calculateSizes is optimized for time strings
+                const isMobile = window.innerWidth < 768;
+                const availableWidth = canvas.width - (isMobile ? 6 : 40);
+                const unitsPerChar = 7.5; 
+                const divisor = 14 * unitsPerChar; // 14 chars
+                const basePixelSize = Math.floor(availableWidth / divisor);
+                this.pixelSize = Math.max(isMobile ? 1 : 4, Math.min(35, basePixelSize));
+                this.digitSpacing = this.pixelSize * (isMobile ? 1.2 : 2);
+                this.sectionSpacing = this.pixelSize * (isMobile ? 2.5 : 4);
+                
+                const allNewPixels = this.createPixelsForString(newTimeString);
+                this.pixels = allNewPixels;
+                this.currentTimeString = newTimeString;
+            }
+            
+            // Still do fireworks
             this.createMassiveFireworks();
+            
+            // Update pixels
+            for (let i = 0; i < this.pixels.length; i++) {
+                this.pixels[i].update(dt);
+            }
+            
+            // Update particles
+            for (let i = this.particles.length - 1; i >= 0; i--) {
+                this.particles[i].update(dt);
+                if (!this.particles[i].isAlive()) {
+                    this.particles.splice(i, 1);
+                }
+            }
+            
+            // Update fireworks
+            for (let i = this.fireworks.length - 1; i >= 0; i--) {
+                this.fireworks[i].update(dt);
+                if (!this.fireworks[i].isAlive()) {
+                    this.fireworks.splice(i, 1);
+                }
+            }
+            
             return;
+        } else {
+            document.getElementById('happyNewYear').style.display = 'none';
         }
 
         const oldDisplayMode = this.displayMode;
         const newTimeString = this.formatTime(time);
         
-        // Recalculate sizes when displayMode changes
-        if (oldDisplayMode !== this.displayMode || this.lastDisplayMode !== this.displayMode) {
+        // Recalculate sizes when displayMode changes OR when string length changes (e.g. 99 -> 100 days)
+        if (oldDisplayMode !== this.displayMode || 
+            this.lastDisplayMode !== this.displayMode || 
+            (this.currentTimeString && newTimeString.length !== this.currentTimeString.length)) {
+            
             this.calculateSizes();
             this.updateLabels();
             this.lastDisplayMode = this.displayMode;
@@ -1706,8 +1964,19 @@ class CountdownDisplay {
     }
 
     createMassiveFireworks() {
+        // Only create massive fireworks if we haven't already done so recently
+        // or if we are in a continuous celebration mode.
+        // But to prevent "too much fireworks" when switching, we can limit it.
+        
+        // If we just switched to 2027, we shouldn't be here because isNewYear is false.
+        // If we are in 2026 New Year mode, we want fireworks but maybe not "too much" if it crashes.
+        
+        // Check if we are already celebrating
+        if (this.isCelebrating) return;
+        this.isCelebrating = true;
+
         // Massive fireworks for New Year (quality-based)
-        const rocketCount = currentQuality <= 2 ? 15 : 30;
+        const rocketCount = currentQuality <= 2 ? 5 : 10; // Reduced count
         for (let i = 0; i < rocketCount; i++) {
             setTimeout(() => {
                 const x = Math.random() * fireworksCanvas.width;
@@ -1715,25 +1984,12 @@ class CountdownDisplay {
                 const scheme = COLOR_SCHEMES[Math.floor(Math.random() * COLOR_SCHEMES.length)];
                 const color = scheme[Math.floor(Math.random() * scheme.length)];
                 this.rockets.push(new FireworkRocket(x, targetY, color));
-            }, i * 150);
+            }, i * 300); // Slower interval
         }
         
-        // Extra explosions
-        const explosionCount = currentQuality <= 2 ? 10 : 20;
-        for (let i = 0; i < explosionCount; i++) {
-            setTimeout(() => {
-                const x = Math.random() * fireworksCanvas.width;
-                const y = Math.random() * fireworksCanvas.height * 0.5;
-                const schemeIndex = Math.floor(Math.random() * COLOR_SCHEMES.length);
-                const scheme = COLOR_SCHEMES[schemeIndex];
-
-                const particleCount = currentQuality <= 2 ? 50 : 100;
-                for (let j = 0; j < particleCount; j++) {
-                    const color = scheme[Math.floor(Math.random() * scheme.length)];
-                    this.fireworks.push(new FireworkParticle(x, y, color));
-                }
-            }, i * 200);
-        }
+        // Reset flag after some time so we can celebrate again if needed?
+        // Or just let it run once.
+        setTimeout(() => { this.isCelebrating = false; }, 5000);
     }
 
     draw() {
@@ -2018,13 +2274,10 @@ setInterval(updateQualityDisplay, 1000);
 
 // Star animation control based on quality
 function updateStarAnimation() {
-    if (currentQuality === 1) {
-        // Mode 1: Stars static
-        document.body.classList.add('stars-static');
-    } else {
-        // Mode 2+: Stars moving
-        document.body.classList.remove('stars-static');
-    }
+    // Disable stars completely to prevent crashes
+    document.body.classList.add('stars-static');
+    const stars = document.querySelector('.shooting-stars');
+    if (stars) stars.style.display = 'none';
 }
 
 // Auto-refresh stats every 5 seconds when panel is open
@@ -2072,3 +2325,28 @@ updateStarAnimation();
 
 console.log('🎆 Countdown to New Year 2026 started! 🎆');
 console.log('💡 Tip: Click anywhere on the screen for extra fireworks!');
+
+if (!targetYear) {
+    setCurrentYearMode(true);
+    updateLanguage();
+}
+
+// Button to switch to 2027
+const btn2027 = document.getElementById('btn-2027');
+if (btn2027) {
+    btn2027.addEventListener('click', () => {
+        const year = getNextYear();
+        startCountdownToYear(year);
+        
+        // Add moderate fireworks celebration
+        const scheme = COLOR_SCHEMES[Math.floor(Math.random() * COLOR_SCHEMES.length)];
+        for (let i = 0; i < 8; i++) {
+            setTimeout(() => {
+                const x = Math.random() * fireworksCanvas.width;
+                const targetY = 50 + Math.random() * (fireworksCanvas.height * 0.4);
+                const color = scheme[Math.floor(Math.random() * scheme.length)];
+                countdown.rockets.push(new FireworkRocket(x, targetY, color));
+            }, i * 200);
+        }
+    });
+}
